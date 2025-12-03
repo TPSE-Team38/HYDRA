@@ -163,7 +163,7 @@ def get_peaks(y):
         else:
             done = True
     y_new=np.concatenate((y[:actual_left+1],[np.nan]*len(y[actual_left+1:actual_right]),y[actual_right:]))
-    return y_new
+    return y_new,leftP+((rightP-leftP)/2)
 
 def get_2_peaks(y:np.ndarray[float],y_nonsmoothed)->np.ndarray[float]:
     """
@@ -217,14 +217,15 @@ def get_2_peaks(y:np.ndarray[float],y_nonsmoothed)->np.ndarray[float]:
 
     return new_y,x_c
 
-def different_approach_gaus_jonathan(y:np.ndarray[float],x:np.ndarray[float]):
+def different_approach_gaus_jonathan(y:np.ndarray[float],x:np.ndarray[float],xc):
     """
     fits the curve of the tails created by ion suppression removal
     """
     mask=~np.isnan(y)
     x_fit=x[mask]
     y_fit=y[mask]
-    p0 = [y_fit.min(), y_fit.mean(), (y_fit.max() - y_fit.min())/2, (y_fit.max() - y_fit.min())**2]
+    # print(np.median(y_fit,axis=0))
+    p0 = [np.median(y_fit,axis=0), xc, np.log1p(y_fit.max())*y_fit.std(), (y_fit.max() - y_fit.min())**2]
     params,_=curve_fit(new_gauss_from_jonathan,x_fit,y_fit,p0=p0,maxfev=10000)
 
     return new_gauss_from_jonathan(x,*params)
@@ -290,7 +291,7 @@ def gaussian_fit_with_removed_dip(y,y_original,x_c):
 
     initial_p=[np.float64(y_0),np.float64(x_c),w,A]
 
-    params,err=curve_fit(new_gauss_from_jonathan,xdat[y_mask],y[y_mask],p0=initial_p)
+    params,_=curve_fit(new_gauss_from_jonathan,xdat[y_mask],y[y_mask],p0=initial_p)
 
     return new_gauss_from_jonathan(xdat,*params)
 
@@ -368,15 +369,18 @@ def main():
             print("Fitting EIC")
             #masking
             # removed_dip,xc=get_2_peaks(smoothed_intensities,final_intensities)
-            removed_dip=get_peaks(final_intensities)
+            removed_dip,xc=get_peaks(final_intensities)
+            mask=~np.isnan(removed_dip)
+            removed_dip[mask]=sig.savgol_filter(removed_dip[mask], int(args.smooth[0]), int(args.smooth[1]))
             plt.plot(seconds,removed_dip,label="EIC after Masking",color='yellow')
 
             #fitting
-            removed_dip_fitted=different_approach_gaus_jonathan(removed_dip,seconds)
-            mask=~np.isnan(removed_dip)
+            removed_dip_fitted=different_approach_gaus_jonathan(removed_dip,seconds,xc)
             r2=r2_score(removed_dip[mask],removed_dip_fitted[mask])
             if r2<0.5:
                 removed_dip_fitted=different_approach_gaus(removed_dip,seconds)
+                r2=r2_score(removed_dip[mask],removed_dip_fitted[mask])
+
             plt.plot(seconds,removed_dip_fitted,'--',label=f"EIC with R^2 value of {r2}")
 
         plt.xlabel("Seconds")
