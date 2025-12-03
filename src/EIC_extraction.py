@@ -1,4 +1,6 @@
 import scipy.optimize
+from fontTools.subset import intersect
+from numpy.ma.core import left_shift
 from pyteomics import ms1
 import numpy as np
 import matplotlib.pyplot as plt
@@ -10,6 +12,7 @@ import argparse
 import pathlib
 from scipy.optimize import curve_fit,least_squares
 import lmfit
+from scipy.signal import find_peaks
 from sklearn.metrics import r2_score
 import os
 from BaselineRemoval import BaselineRemoval
@@ -113,19 +116,73 @@ def try_flip(y):
     result=np.concatenate((y[:peak[0]],[x+((y[peak[0]]-x)*2) for x in y[peak[0]:(peak[-1]-int((peak[-1]-peak[0])/2))]],[x+((y[peak[-1]]-x)*2) for x in y[peak[-1]-int((peak[-1]-peak[0])/2):peak[-1]]],y[peak[-1]:]))
     return result
 
+def get_peaks(y):
+    #try getting peaks beginning from left then beginning from right (sigmoidal fit)
+    maxDiff=0
+    for i in range(0,len(y)-2):
+        maxDtemp=max(abs(y[i]-y[i+2]),abs(y[i]-y[i+2]))
+        if maxDtemp>maxDiff or maxDtemp>maxDiff:
+            maxDiff=maxDtemp
+    leftP=0
+    for i,x in enumerate(y):
+        if x>y[leftP]:
+            leftP=i
+        elif abs(x-y[leftP])>maxDiff:
+            break
+    rightP=0
+    for i in reversed(range(1,len(y))):
+        if y[i]>y[rightP]:
+            rightP=i
+        elif abs(y[i]-y[rightP])>maxDiff:
+            break
+    # y_new=np.concatenate((y[:leftP],[np.nan]*len(y[leftP:rightP]),y[rightP:]))
+    actual_right = -1
+    actual_left = -1
+    right_side = y[rightP:]
+    left_side = y[:leftP+1]
+    done = False
+    boundL, boundR = 0.94, 0.96
+    while not done:
+        for (i, x) in enumerate(right_side):
+            if boundL * y[rightP] <= x <= boundR * y[rightP]:
+                actual_right = rightP+i
+                break
+        if actual_right == -1:
+            boundL -= 0.0001
+        else:
+            done = True
+    done = False
+    boundL, boundR = 0.94, 0.96
+    while not done:
+        for (i, x) in enumerate(left_side):
+            if boundL * left_side[leftP] <= x <= boundR * left_side[leftP]:
+                actual_left = i
+                break
+        if actual_left == -1:
+            boundL -= 0.0001
+        else:
+            done = True
+    y_new=np.concatenate((y[:actual_left+1],[np.nan]*len(y[actual_left+1:actual_right]),y[actual_right:]))
+    return y_new
 
 def get_2_peaks(y:np.ndarray[float],y_nonsmoothed)->np.ndarray[float]:
     """
     Returns y-values with the found noise created by ion suppression removed(replaced by np.nan)
     """
-    peaks,_=sig.find_peaks(y,height=y.mean())
+
+    y_smoothed=sig.savgol_filter(y_nonsmoothed,window_length=11,polyorder=2,mode='mirror')
+    # plt.figure()
+    # plt.plot(np.arange(1,len(y_smoothed)+1),y_smoothed)
+    # plt.savefig("fig.png")
+    peaks,_=sig.find_peaks(y_smoothed,height=y_smoothed.mean())
     x_c=peaks[0]+np.argmin(y[peaks[0]:peaks[-1]])
-    right_peak=np.argmax(y_nonsmoothed[x_c:])
+
+    right_peak=np.argmax(y_nonsmoothed[x_c+1:])
     left_peak=np.argmax(y_nonsmoothed[:x_c])
     actual_right=-1
     actual_left=-1
-    right_side=y[right_peak+x_c:]
-    left_side=y[:left_peak]
+    right_side=y_nonsmoothed[right_peak+x_c:]
+    left_side=y_nonsmoothed[:left_peak]
     done=False
     boundL,boundR=0.94,0.96
     while not done:
@@ -148,8 +205,29 @@ def get_2_peaks(y:np.ndarray[float],y_nonsmoothed)->np.ndarray[float]:
             boundL-=0.01
         else:
             done=True
-    new_y=np.concatenate((y_nonsmoothed[:actual_left],[np.nan]*len(y[actual_left:actual_right]),y_nonsmoothed[actual_right:]))
+    maxPeak=max(y_nonsmoothed[actual_left],y_nonsmoothed[actual_right])
+    if (maxPeak-y_nonsmoothed[x_c])/maxPeak>0.3:
+        new_y=np.concatenate((y_nonsmoothed[:actual_left],[np.nan]*len(y[actual_left:actual_right]),y_nonsmoothed[actual_right:]))
+        # print((max(y_nonsmoothed[actual_left],y_nonsmoothed[actual_right])-y_nonsmoothed[x_c])/max(y_nonsmoothed[actual_left],y_nonsmoothed[actual_right]))
+    else:
+        new_y=y_nonsmoothed.copy()
+        fit=different_approach_gaus(new_y,np.arange(1,len(new_y)+1))
+        inter=np.intersect1d(y,fit)
+        # print(inter)
+
     return new_y,x_c
+
+def different_approach_gaus_jonathan(y:np.ndarray[float],x:np.ndarray[float]):
+    """
+    fits the curve of the tails created by ion suppression removal
+    """
+    mask=~np.isnan(y)
+    x_fit=x[mask]
+    y_fit=y[mask]
+    p0 = [y_fit.min(), y_fit.mean(), (y_fit.max() - y_fit.min())/2, (y_fit.max() - y_fit.min())**2]
+    params,_=curve_fit(new_gauss_from_jonathan,x_fit,y_fit,p0=p0,maxfev=10000)
+
+    return new_gauss_from_jonathan(x,*params)
 
 def different_approach_gaus(y:np.ndarray[float],x:np.ndarray[float]):
     """
@@ -162,20 +240,27 @@ def different_approach_gaus(y:np.ndarray[float],x:np.ndarray[float]):
 
     return gaus(x,*params)
 
-def gauss_constant_fit(y:np.ndarray[float],y_original:np.ndarray[float]):
+def gauss_constant_fit(y:np.ndarray[float]):
     mod_gaus = lmfit.models.GaussianModel(nan_policy='propagate')
     mod_const=lmfit.models.ConstantModel(nan_policy='propagate')
-    y_work=y[~np.isnan(y)]
+    # model=mod_gaus+mod_const
+    mask=~np.isnan(y)
     xdat=np.arange(1,len(y)+1)
     # pars = mod.make_params(c=np.mean(y_work),
     #                        center=xdat.mean(),
     #                        sigma=xdat.std(),
     #                        amplitude=xdat.std() * np.ptp(y_work)
     #                        )
-    pars=mod_gaus.guess(y_work,x=xdat)
+    # pars=mod_gaus.guess(y[mask],x=xdat[mask])
     mod=mod_gaus+mod_const
-    out = mod.fit(y_work, pars, x=xdat)
-    return out.best_fit
+    params=mod_gaus.guess(y[mask],x=xdat[mask])
+    out=mod.fit(y[mask],x=xdat[mask],maxfev=10000)
+    return out.eval(x=xdat)
+    print(params)
+    return mod.eval(params,x=xdat)
+    # out = mod.fit(x=xdat[mask],params=params)
+    # return []
+
 def gauss_from_jonathan_lmfit(y:np.ndarray[float],y_original:np.ndarray[float]):
     mod = lmfit.models.Model(new_gauss_from_jonathan,nan_policy='propagate')
     # mod = lmfit.models.GaussianModel(nan_policy='omit')
@@ -273,20 +358,25 @@ def main():
         seconds = np.arange(1, len(final_intensities) + 1)
 
         plt.scatter(seconds, final_intensities, label=f"EIC of Protein {protein_mz} with range {protein_sampling_range}")
-
+        get_peaks(final_intensities)
         #smoothing
         smoothed_intensities=sig.savgol_filter(final_intensities, int(args.smooth[0]), int(args.smooth[1]))
         plt.plot(seconds,smoothed_intensities, label=f"smoothed EIC intensity of Protein {protein_mz}")
-
+        peaks,_=find_peaks(final_intensities,height=np.mean(final_intensities)+(3*np.std(final_intensities)))
+        # plt.plot(peaks,final_intensities[peaks],'x')
         if args.fit:
             print("Fitting EIC")
             #masking
-            removed_dip,xc=get_2_peaks(smoothed_intensities,final_intensities)
-            plt.plot(seconds,removed_dip,label="EIC after Masking",color='lavender')
+            # removed_dip,xc=get_2_peaks(smoothed_intensities,final_intensities)
+            removed_dip=get_peaks(final_intensities)
+            plt.plot(seconds,removed_dip,label="EIC after Masking",color='yellow')
 
             #fitting
-            removed_dip_fitted=different_approach_gaus(removed_dip,seconds)
-            r2=r2_score(final_intensities,removed_dip_fitted)
+            removed_dip_fitted=different_approach_gaus_jonathan(removed_dip,seconds)
+            mask=~np.isnan(removed_dip)
+            r2=r2_score(removed_dip[mask],removed_dip_fitted[mask])
+            if r2<0.5:
+                removed_dip_fitted=different_approach_gaus(removed_dip,seconds)
             plt.plot(seconds,removed_dip_fitted,'--',label=f"EIC with R^2 value of {r2}")
 
         plt.xlabel("Seconds")
