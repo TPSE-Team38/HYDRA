@@ -118,11 +118,19 @@ def try_flip(y):
 
 def get_peaks(y):
     #try getting peaks beginning from left then beginning from right (sigmoidal fit)
+
     maxDiff=0
     for i in range(0,len(y)-2):
-        maxDtemp=max(abs(y[i]-y[i+2]),abs(y[i]-y[i+2]))
+        maxDtemp=max(abs(y[i]-y[i+1]),abs(y[i]-y[i+2]))
         if maxDtemp>maxDiff or maxDtemp>maxDiff:
             maxDiff=maxDtemp
+    '''
+    maxDiff=0
+    for i in range(0,len(y)-1):
+        maxDtemp=abs(y[i]-y[i+1])
+        if maxDtemp>maxDiff or maxDtemp>maxDiff:
+            maxDiff=maxDtemp
+    '''
     leftP=0
     for i,x in enumerate(y):
         if x>y[leftP]:
@@ -230,13 +238,14 @@ def different_approach_gaus_jonathan(y:np.ndarray[float],x:np.ndarray[float],xc)
 
     return new_gauss_from_jonathan(x,*params)
 
-def different_approach_gaus(y:np.ndarray[float],x:np.ndarray[float]):
+def different_approach_gaus(y:np.ndarray[float],x:np.ndarray[float],xc):
     """
     fits the curve of the tails created by ion suppression removal
     """
     mask=~np.isnan(y)
     x_fit=x[mask]
     y_fit=y[mask]
+    p0=[(y_fit.max() - y_fit.min())**2,xc,np.log1p(y_fit.max())*y_fit.std()]
     params,_=curve_fit(gaus,x_fit,y_fit,maxfev=10000)
 
     return gaus(x,*params)
@@ -295,6 +304,18 @@ def gaussian_fit_with_removed_dip(y,y_original,x_c):
 
     return new_gauss_from_jonathan(xdat,*params)
 
+def get_z_vals(charge_state,charge_state_range):
+    offset=np.floor(charge_state_range / 2)
+    if charge_state_range % 2 == 0:
+        return np.arange(charge_state - offset,
+                           charge_state + offset + 1)
+    else:
+        return np.arange(charge_state - offset,
+                           charge_state + offset + 2)
+
+def mz_to_mz(original_mz,original_charge_state,new_charge_state):
+    return original_mz*original_charge_state/new_charge_state
+
 def main():
 
     parser = argparse.ArgumentParser(
@@ -326,9 +347,9 @@ def main():
 
     parser.add_argument(
         "--region","-R",
-        nargs=2,
+        nargs=4,
         action="append",
-        metavar=('MIN_MZ', 'MAX_MZ'),
+        metavar=('MIN_MZ', 'Protein_Smapling_Range','Z','Z_range'),
         required=True,
         help="-R <m/z value> <region size> , example: --region 604 4 (can be repeated)"
     )
@@ -342,7 +363,7 @@ def main():
         return
 
     # Convert region strings to floats
-    regions = [(float(a), float(b)) for a, b in args.region]
+    regions = [(float(a), float(b),int(c),int(d)) for a, b, c, d in args.region]
     # Load spectra
     print(f"Loading MS1 file: {path}")
     spectra = load_ms1(path)
@@ -350,35 +371,41 @@ def main():
     plt.style.use('ggplot')
 
     # Extract EICs for each region
-    for (i,(protein_mz, protein_sampling_range)) in enumerate(regions):
+    for (i,(protein_mz, protein_sampling_range,charge_state,charge_state_range)) in enumerate(regions):
 
         plt.figure(figsize=(10, 6))
+        final_intensities_arr=[]
+        z_vals=get_z_vals(charge_state,charge_state_range)
 
-        #summation of intensities of mz and range
-        final_intensities = get_final_eic_intensities(spectra, protein_mz, protein_sampling_range)
+        for z in z_vals:
+            final_intensities_arr.append(get_final_eic_intensities(spectra, mz_to_mz(protein_mz,charge_state,z), protein_sampling_range))
+
+        #summation of intensities of mz(s)
+        final_intensities=[0]*len(final_intensities_arr[0])
+        for final_intensity in final_intensities_arr:
+            for i in range(len(final_intensity)):
+                final_intensities[i]+=final_intensity[i]
+
         seconds = np.arange(1, len(final_intensities) + 1)
 
         plt.scatter(seconds, final_intensities, label=f"EIC of Protein {protein_mz} with range {protein_sampling_range}")
-        get_peaks(final_intensities)
+
         #smoothing
         smoothed_intensities=sig.savgol_filter(final_intensities, int(args.smooth[0]), int(args.smooth[1]))
         plt.plot(seconds,smoothed_intensities, label=f"smoothed EIC intensity of Protein {protein_mz}")
-        peaks,_=find_peaks(final_intensities,height=np.mean(final_intensities)+(3*np.std(final_intensities)))
-        # plt.plot(peaks,final_intensities[peaks],'x')
+
         if args.fit:
             print("Fitting EIC")
             #masking
-            # removed_dip,xc=get_2_peaks(smoothed_intensities,final_intensities)
-            removed_dip,xc=get_peaks(final_intensities)
+            removed_dip,xc_guess=get_peaks(final_intensities)
             mask=~np.isnan(removed_dip)
-            removed_dip[mask]=sig.savgol_filter(removed_dip[mask], int(args.smooth[0]), int(args.smooth[1]))
             plt.plot(seconds,removed_dip,label="EIC after Masking",color='yellow')
 
-            #fitting
-            removed_dip_fitted=different_approach_gaus_jonathan(removed_dip,seconds,xc)
+            #fitting and r2 score
+            removed_dip_fitted = different_approach_gaus_jonathan(removed_dip, seconds, xc_guess)
             r2=r2_score(removed_dip[mask],removed_dip_fitted[mask])
             if r2<0.5:
-                removed_dip_fitted=different_approach_gaus(removed_dip,seconds)
+                removed_dip_fitted = different_approach_gaus(removed_dip, seconds, xc_guess)
                 r2=r2_score(removed_dip[mask],removed_dip_fitted[mask])
 
             plt.plot(seconds,removed_dip_fitted,'--',label=f"EIC with R^2 value of {r2}")
