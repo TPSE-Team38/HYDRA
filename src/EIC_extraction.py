@@ -16,7 +16,7 @@ from scipy.signal import find_peaks
 from sklearn.metrics import r2_score
 import os
 from BaselineRemoval import BaselineRemoval
-
+from scipy.constants import k as boltzmann_c
 
 
 
@@ -316,6 +316,13 @@ def get_z_vals(charge_state,charge_state_range):
 def mz_to_mz(original_mz,original_charge_state,new_charge_state):
     return original_mz*original_charge_state/new_charge_state
 
+def diffusion_coefficient(capillary_radius,standard_deviation : float,t_R:float):
+    return((capillary_radius**2)*t_R)/(24*(standard_deviation**2))
+
+def hydrodynamic_radius(temp:float,viscosity:float,diffusion_coefficient:float):
+    from scipy.constants import k as boltzmann_c
+    return (boltzmann_c*temp)/(6*np.pi*viscosity*diffusion_coefficient)
+
 def main():
 
     parser = argparse.ArgumentParser(
@@ -351,9 +358,17 @@ def main():
         action="append",
         metavar=('MIN_MZ', 'Protein_Smapling_Range','Z','Z_range'),
         required=True,
-        help="-R <m/z value> <region size> , example: --region 604 4 (can be repeated)"
+        help="-R <m/z value> <region size> , example: --region 1689 4 7 2 (can be repeated)"
     )
 
+    parser.add_argument(
+        "--parameters","-P",
+        nargs=5,
+        action="store",
+        metavar=('temperature','viscosity','capillary_radius','capillary_length','flow_rate'),
+        required=True,
+        help="-P <temperature> <viscosity> <capillary_radius> <capillary_length> <flow_rate> \n example -P 22 0.0009544 127 114.5 20"
+    )
     args = parser.parse_args()
 
     path = pathlib.Path(args.path)
@@ -407,8 +422,12 @@ def main():
             if r2<0.5:
                 removed_dip_fitted = different_approach_gaus(removed_dip, seconds, xc_guess)
                 r2=r2_score(removed_dip[mask],removed_dip_fitted[mask])
-
-            plt.plot(seconds,removed_dip_fitted,'--',label=f"EIC with R^2 value of {r2}")
+            t_R=np.argmax(removed_dip_fitted)
+            sigma=np.std(removed_dip_fitted)
+            print(args.parameters)
+            D=diffusion_coefficient(t_R,sigma,float(args.parameters[2]))
+            R_h=hydrodynamic_radius(float(args.parameters[0]),float(args.parameters[1]),D)
+            plt.plot(seconds,removed_dip_fitted,'--',label=f"EIC with R^2 value of {r2} \n \n and R_h of {R_h}")
 
         plt.xlabel("Seconds")
         plt.ylabel("Total intensity")
