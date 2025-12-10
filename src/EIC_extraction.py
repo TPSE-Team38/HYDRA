@@ -419,15 +419,17 @@ def main():
             #fitting and r2 score
             removed_dip_fitted = different_approach_gaus_jonathan(removed_dip, seconds, xc_guess)
             r2=r2_score(removed_dip[mask],removed_dip_fitted[mask])
-            if r2<0.5:
+            if r2<0.75:
+                print(f"using normal gaus for EIC {protein_mz}")
                 removed_dip_fitted = different_approach_gaus(removed_dip, seconds, xc_guess)
                 r2=r2_score(removed_dip[mask],removed_dip_fitted[mask])
-            t_R=np.argmax(removed_dip_fitted)
+            t_R=np.argmax(removed_dip_fitted)+1
             sigma=np.std(removed_dip_fitted)
             print(args.parameters)
+            from scipy.constants import k as boltzmann_c
             D=diffusion_coefficient(t_R,sigma,float(args.parameters[2]))
             R_h=hydrodynamic_radius(float(args.parameters[0]),float(args.parameters[1]),D)
-            plt.plot(seconds,removed_dip_fitted,'--',label=f"EIC with R^2 value of {r2} \n \n and R_h of {R_h}")
+            plt.plot(seconds,removed_dip_fitted,'--',label=f"EIC with R^2 value of {r2} \n \n and R_h of {R_h} \n boltzmann_c value={boltzmann_c} \n sigma: {sigma} \n D: {D}")
 
         plt.xlabel("Seconds")
         plt.ylabel("Total intensity")
