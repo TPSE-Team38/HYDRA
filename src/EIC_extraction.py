@@ -61,60 +61,9 @@ def get_final_eic_intensities(spectra, protein_mz, protein_sampling_range)->np.n
     return np.array(final_intensities)
 
 def gaus(x, a, x0, sigma):
-    return a * np.exp(-(x - x0)**2 / ( sigma**2))
-
-def fit_curve(y):
-
-    x=np.arange(1,len(y)+1)
-    mu=np.mean(x)
-    sigma=np.sqrt(5)
-
-    initial_guess = [np.max(y), mu, sigma]
-
-    params, error = curve_fit(gaus, x, y,p0=initial_guess)
-    fit=gaus(x,*params)
-
-    return fit
-
-#finds the peaks of the smoothed graph
-#finds the smallest value between first and last peak: min
-#then sets the mid point of interpolation to double of: biggest peak - min
-#interpolates between first peak, mid point, last peak quadratically
-def dip_detect_correct(y):
-    """
-    finds the peaks of the smoothed graph
-    finds the smallest value between first and last peak: min
-    then sets the mid point of interpolation to double of: biggest peak - min
-    interpolates between first peak, mid point, last peak quadratically
-    y: smoothed values of the y-axis
-    Returns graph with dip replaced with interpolated values"""
-
-    #get middle point by adding the highest peak to the difference between the highest peek and the lowest point
-    peak, _ = sig.find_peaks(y, height=np.mean(y))
-    max_peak=max(y[peak])
-    minPoint = max_peak + (max_peak - min(y[peak[0]:peak[-1]]))
-
-    pointsX=np.array([peak[0] - 1,
-                      peak[-1] - ((peak[-1] - peak[0]) / 2),
-                      peak[-1] + 1])
-    pointsY=np.array([y[peak[0] - 1]
-                         , minPoint
-                         ,y[peak[-1] + 1]])
-    #interpolate using first and last peak in x-axis and middle-point
-    predict = interpolate.interp1d(pointsX,pointsY,kind='quadratic')
-
-    #connect the interpolated values to the tails on either side of the left and right peak
-    interpolated = np.concatenate((y[:(peak[0] - 1)], predict(np.arange(1,len(y))[peak[0] - 1:peak[len(peak) - 1] + 1]),
-                                           y[peak[len(peak) - 1] + 1:]))
-
-    return interpolated
+    return a * np.exp(-(x - x0)**2 / ( 2*sigma**2))
 
 
-def try_flip(y):
-    peak,_=sig.find_peaks(y,height=np.mean(y))
-    max_peak=max(y[peak])
-    result=np.concatenate((y[:peak[0]],[x+((y[peak[0]]-x)*2) for x in y[peak[0]:(peak[-1]-int((peak[-1]-peak[0])/2))]],[x+((y[peak[-1]]-x)*2) for x in y[peak[-1]-int((peak[-1]-peak[0])/2):peak[-1]]],y[peak[-1]:]))
-    return result
 
 def get_peaks(y):
     #try getting peaks beginning from left then beginning from right (sigmoidal fit)
@@ -235,8 +184,8 @@ def different_approach_gaus_jonathan(y:np.ndarray[float],x:np.ndarray[float],xc)
     # print(np.median(y_fit,axis=0))
     p0 = [np.median(y_fit,axis=0), xc, np.log1p(y_fit.max())*y_fit.std(), (y_fit.max() - y_fit.min())**2]
     params,_=curve_fit(new_gauss_from_jonathan,x_fit,y_fit,p0=p0,maxfev=10000)
-
-    return new_gauss_from_jonathan(x,*params)
+    sigma = abs(params[2] / 2)
+    return new_gauss_from_jonathan(x,*params),sigma
 
 def different_approach_gaus(y:np.ndarray[float],x:np.ndarray[float],xc):
     """
@@ -247,62 +196,13 @@ def different_approach_gaus(y:np.ndarray[float],x:np.ndarray[float],xc):
     y_fit=y[mask]
     p0=[(y_fit.max() - y_fit.min())**2,xc,np.log1p(y_fit.max())*y_fit.std()]
     params,_=curve_fit(gaus,x_fit,y_fit,maxfev=10000)
+    sigma=abs(params[2])
+    return gaus(x,*params),sigma
 
-    return gaus(x,*params)
-
-def gauss_constant_fit(y:np.ndarray[float]):
-    mod_gaus = lmfit.models.GaussianModel(nan_policy='propagate')
-    mod_const=lmfit.models.ConstantModel(nan_policy='propagate')
-    # model=mod_gaus+mod_const
-    mask=~np.isnan(y)
-    xdat=np.arange(1,len(y)+1)
-    # pars = mod.make_params(c=np.mean(y_work),
-    #                        center=xdat.mean(),
-    #                        sigma=xdat.std(),
-    #                        amplitude=xdat.std() * np.ptp(y_work)
-    #                        )
-    # pars=mod_gaus.guess(y[mask],x=xdat[mask])
-    mod=mod_gaus+mod_const
-    params=mod_gaus.guess(y[mask],x=xdat[mask])
-    out=mod.fit(y[mask],x=xdat[mask],maxfev=10000)
-    return out.eval(x=xdat)
-    print(params)
-    return mod.eval(params,x=xdat)
-    # out = mod.fit(x=xdat[mask],params=params)
-    # return []
-
-def gauss_from_jonathan_lmfit(y:np.ndarray[float],y_original:np.ndarray[float]):
-    mod = lmfit.models.Model(new_gauss_from_jonathan,nan_policy='propagate')
-    # mod = lmfit.models.GaussianModel(nan_policy='omit')
-    y_work=y[~np.isnan(y)]
-    xdat=np.arange(1,len(y)+1)
-    pars=mod.make_params()
-    # pars = mod.make_params(c=np.mean(y_work),
-    #                        center=xdat.mean(),
-    #                        sigma=xdat.std(),
-    #                        amplitude=xdat.std() * np.ptp(y_work)
-    #                        )
-    out = mod.fit(y, pars, x=xdat)
-    plt.figure(5, figsize=(8, 8))
-    out.plot_fit()
 
 
 def new_gauss_from_jonathan(y:np.ndarray[float],y_0,xc,w,A):
     return y_0 +((A/(w*np.sqrt(np.pi/2)))*np.exp((-2)*(((y-xc)/w)**2)))
-def gaussian_fit_with_removed_dip(y,y_original,x_c):
-    obj=BaselineRemoval(y_original)
-
-    y_mask=~np.isnan(y)
-    xdat=np.arange(1,len(y)+1)
-    y_0=y_original[obj.ZhangFit().argmin()]
-    w=np.sqrt(2)*np.std(y_original)
-    A=xdat.std() * np.ptp(y_original)
-
-    initial_p=[np.float64(y_0),np.float64(x_c),w,A]
-
-    params,_=curve_fit(new_gauss_from_jonathan,xdat[y_mask],y[y_mask],p0=initial_p)
-
-    return new_gauss_from_jonathan(xdat,*params)
 
 def get_z_vals(charge_state,charge_state_range):
     offset=np.floor(charge_state_range / 2)
@@ -317,7 +217,7 @@ def mz_to_mz(original_mz,original_charge_state,new_charge_state):
     return original_mz*original_charge_state/new_charge_state
 
 def diffusion_coefficient(capillary_radius,standard_deviation : float,t_R:float):
-    return((capillary_radius**2)*t_R)/(24*(standard_deviation**2))
+    return(((capillary_radius**2)*t_R)/(24*(standard_deviation**2)))
 
 def hydrodynamic_radius(temp:float,viscosity:float,diffusion_coefficient:float):
     from scipy.constants import k as boltzmann_c
@@ -360,14 +260,28 @@ def main():
         required=True,
         help="-R <m/z value> <region size> , example: --region 1689 4 7 2 (can be repeated)"
     )
+    parser.add_argument(
+        "--temperature",
+        type=float,
+        default=22,
+
+        help=" <temperature in Kelvin>  (default: 22 C°)"
+    )
+    parser.add_argument(
+        "--viscosity",
+        type=float,
+        default=0.9544e-3,
+
+        help="<viscosity> (default: 0.0009544 kg m^-1 s^-1)"
+    )
 
     parser.add_argument(
         "--parameters","-P",
-        nargs=5,
+        nargs=2,
         action="store",
-        metavar=('temperature','viscosity','capillary_radius','capillary_length','flow_rate'),
+        metavar=('capillary_radius','capillary_length'),
         required=True,
-        help="-P <temperature> <viscosity> <capillary_radius> <capillary_length> <flow_rate> \n example -P 22 0.0009544 127 114.5 20"
+        help="-P <capillary_radius> <capillary_length>\n example -P 0.000127 1.1455 "
     )
     args = parser.parse_args()
 
@@ -417,18 +331,21 @@ def main():
             plt.plot(seconds,removed_dip,label="EIC after Masking",color='yellow')
 
             #fitting and r2 score
-            removed_dip_fitted = different_approach_gaus_jonathan(removed_dip, seconds, xc_guess)
+            removed_dip_fitted,sigma = different_approach_gaus_jonathan(removed_dip, seconds, xc_guess)
             r2=r2_score(removed_dip[mask],removed_dip_fitted[mask])
             if r2<0.5:
-                removed_dip_fitted = different_approach_gaus(removed_dip, seconds, xc_guess)
+                removed_dip_fitted,sigma = different_approach_gaus(removed_dip, seconds, xc_guess)
                 r2=r2_score(removed_dip[mask],removed_dip_fitted[mask])
-            t_R=np.argmax(removed_dip_fitted)
-            sigma=np.std(removed_dip_fitted)
-            print(args.parameters)
-            D=diffusion_coefficient(t_R,sigma,float(args.parameters[2]))
-            R_h=hydrodynamic_radius(float(args.parameters[0]),float(args.parameters[1]),D)
+            t_R=np.argmax(removed_dip_fitted)+1
+            #sigma=np.std(removed_dip_fitted)
+            D=diffusion_coefficient(float(args.parameters[0]),sigma,t_R)
+            R_h=hydrodynamic_radius(float(args.temperature+273.15),float(args.viscosity),D)
             plt.plot(seconds,removed_dip_fitted,'--',label=f"EIC with R^2 value of {r2} \n \n and R_h of {R_h}")
 
+            print("diffusion_coefficient =" ,D)
+            print("standard deviation of the Gaussian fit =",sigma)
+            print("retention time=",t_R,"seconds")
+            print("R_h =", R_h)
         plt.xlabel("Seconds")
         plt.ylabel("Total intensity")
         plt.title(f"Extracted Ion Chromatograms (EIC) of {protein_mz}m/z of range {protein_sampling_range}")
@@ -441,3 +358,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+# --smooth 10 3 --fit --region 1689 4 7 2 -P 0.000127 1.145
