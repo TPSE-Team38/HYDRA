@@ -61,7 +61,7 @@ def get_final_eic_intensities(spectra, protein_mz, protein_sampling_range)->np.n
     return np.array(final_intensities)
 
 def gaus(x, a, x0, sigma):
-    return a * np.exp(-(x - x0)**2 / ( sigma**2))
+    return a * np.exp(-(x - x0)**2 / (2* sigma**2))
 
 def fit_curve(y):
 
@@ -314,6 +314,7 @@ def get_z_vals(charge_state,charge_state_range):
                            charge_state + offset + 2)
 
 def mz_to_mz(original_mz,original_charge_state,new_charge_state):
+    #mzOld*zOld / zNew
     return original_mz*original_charge_state/new_charge_state
 
 def diffusion_coefficient(capillary_radius,standard_deviation : float,t_R:float):
@@ -403,7 +404,7 @@ def main():
 
         seconds = np.arange(1, len(final_intensities) + 1)
 
-        plt.scatter(seconds, final_intensities, label=f"EIC of Protein {protein_mz} with range {protein_sampling_range}")
+        plt.scatter(seconds, final_intensities, label=f"EIC of Protein {[float(mz_to_mz(protein_mz,charge_state,z)) for z in z_vals ]} with range {protein_sampling_range}")
 
         #smoothing
         smoothed_intensities=sig.savgol_filter(final_intensities, int(args.smooth[0]), int(args.smooth[1]))
@@ -424,12 +425,10 @@ def main():
                 removed_dip_fitted = different_approach_gaus(removed_dip, seconds, xc_guess)
                 r2=r2_score(removed_dip[mask],removed_dip_fitted[mask])
             t_R=np.argmax(removed_dip_fitted)+1
-            sigma=np.std(removed_dip_fitted)
-            print(args.parameters)
-            from scipy.constants import k as boltzmann_c
+            sigma=np.std(removed_dip_fitted,ddof=1)
             D=diffusion_coefficient(t_R,sigma,float(args.parameters[2]))
             R_h=hydrodynamic_radius(float(args.parameters[0]),float(args.parameters[1]),D)
-            plt.plot(seconds,removed_dip_fitted,'--',label=f"EIC with R^2 value of {r2} \n \n and R_h of {R_h} \n boltzmann_c value={boltzmann_c} \n sigma: {sigma} \n D: {D}")
+            plt.plot(seconds,removed_dip_fitted,'--',label=f"EIC with R^2 value of {r2} \n and R_h of {R_h}  \n D: {D} \n sigma: {sigma}")
 
         plt.xlabel("Seconds")
         plt.ylabel("Total intensity")
