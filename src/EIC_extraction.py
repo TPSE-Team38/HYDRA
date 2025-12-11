@@ -1,6 +1,6 @@
 import scipy.optimize
 from fontTools.subset import intersect
-from numpy.ma.core import left_shift
+from numpy.ma.core import left_shift, masked
 from pyteomics import ms1
 import numpy as np
 import matplotlib.pyplot as plt
@@ -149,10 +149,10 @@ def get_peaks(y):
     right_side = y[rightP:]
     left_side = y[:leftP+1]
     done = False
-    boundL, boundR = 0.94, 0.96
+    boundL, boundR = 0.94, 0.95
     while not done:
         for (i, x) in enumerate(right_side):
-            if boundL * y[rightP] <= x <= boundR * y[rightP]:
+            if boundL * y[rightP] <= x <= boundR * y[rightP] :
                 actual_right = rightP+i
                 break
         if actual_right == -1:
@@ -160,7 +160,7 @@ def get_peaks(y):
         else:
             done = True
     done = False
-    boundL, boundR = 0.94, 0.96
+    boundL, boundR = 0.94, 0.95
     while not done:
         for (i, x) in enumerate(left_side):
             if boundL * left_side[leftP] <= x <= boundR * left_side[leftP]:
@@ -324,6 +324,42 @@ def hydrodynamic_radius(temp:float,viscosity:float,diffusion_coefficient:float):
     from scipy.constants import k as boltzmann_c
     return (boltzmann_c*temp)/(6*np.pi*viscosity*diffusion_coefficient)
 
+def recalculate(peaks,y,x,params):
+    print(peaks)
+    masked_y=np.concatenate((y[:peaks[0][0]],[np.nan]*(peaks[1][0]-peaks[0][0]),y[peaks[1][0]:]))
+    mask=~np.isnan(masked_y)
+    fitted,sigma=different_approach_gaus(masked_y,x,x[-1]/2)
+    r2 = r2_score(masked_y[mask], fitted[mask])
+    t_R = np.argmax(x) + 1
+    D = diffusion_coefficient(float(params[2]), sigma, t_R)
+    R_h = hydrodynamic_radius(float(params[0]), float(params[1]), D)
+    return masked_y,fitted,r2,t_R,D,R_h
+    #todo
+    return
+class result():
+    def __init__(self,y,x,params,fig,ax):
+        self.peaks=[]
+        self.y=y
+        self.x=x
+        self.params=params
+        self.fig,self.ax=fig,ax
+        self.cid=self.fig.canvas.mpl_connect("button_press_event",self.on_click)
+
+    def on_click(self,event):
+        if not event.inaxes or len(self.peaks)>2:
+            return
+        c, v = int(event.xdata), event.ydata
+        self.peaks.append((c, v))
+        self.ax.plot(c, v, 'ro')
+        self.fig.canvas.draw()
+        if len(self.peaks) == 2:
+            masked_y,fitted_y,r2,t_R,D,R_h=recalculate(self.peaks, self.y, self.x, self.params)
+            self.ax.plot(self.x, fitted_y,"--",label=f"recalculated_fit with t_R{t_R}\n and D{D}\n and R_h{R_h}")
+            self.ax.plot(self.x, masked_y,"--",label="recalculated_mask")
+            self.fig.canvas.draw()
+            self.ax.legend()
+            plt.show()
+results=[]
 def main():
 
     parser = argparse.ArgumentParser(
@@ -355,11 +391,11 @@ def main():
 
     parser.add_argument(
         "--region","-R",
-        nargs=4,
+        nargs=5,
         action="append",
-        metavar=('MIN_MZ', 'Protein_Smapling_Range','Z','Z_range'),
+        metavar=('Protein_MZ', 'Protein_Smapling_Range','Z','Z_range','name'),
         required=True,
-        help="-R <m/z value> <region size> , example: --region 1689 4 7 2 (can be repeated)"
+        help="-R <m/z value> <region size>, <charge_state>, <other_charge_states>(region),<name> , example: --region 1689 4 7 2 FKBP12 (can be repeated)"
     )
 
     parser.add_argument(
@@ -379,17 +415,16 @@ def main():
         return
 
     # Convert region strings to floats
-    regions = [(float(a), float(b),int(c),int(d)) for a, b, c, d in args.region]
+    regions = [(float(a), float(b),int(c),int(d),str(n)) for a, b, c, d,n in args.region]
     # Load spectra
     print(f"Loading MS1 file: {path}")
     spectra = load_ms1(path)
     print(f"Loaded {len(spectra)} spectra.")
     plt.style.use('ggplot')
-
     # Extract EICs for each region
-    for (i,(protein_mz, protein_sampling_range,charge_state,charge_state_range)) in enumerate(regions):
+    for (i,(protein_mz, protein_sampling_range,charge_state,charge_state_range,protein_name)) in enumerate(regions):
 
-        plt.figure(figsize=(10, 6))
+        fig,ax=plt.subplots()
         final_intensities_arr=[]
         z_vals=get_z_vals(charge_state,charge_state_range)
 
@@ -403,19 +438,19 @@ def main():
                 final_intensities[i]+=final_intensity[i]
 
         seconds = np.arange(1, len(final_intensities) + 1)
-
-        plt.scatter(seconds, final_intensities, label=f"EIC of Protein {[float(mz_to_mz(protein_mz,charge_state,z)) for z in z_vals ]} with range {protein_sampling_range}")
-
+        ax.scatter(seconds, final_intensities, label=f"EIC of Protein {[float(mz_to_mz(protein_mz,charge_state,z)) for z in z_vals ]} with range {protein_sampling_range}")
+        ax.set_xlim(0, seconds[-1])
+        ax.set_ylim(min(final_intensities), max(final_intensities))
         #smoothing
         smoothed_intensities=sig.savgol_filter(final_intensities, int(args.smooth[0]), int(args.smooth[1]))
-        plt.plot(seconds,smoothed_intensities, label=f"smoothed EIC intensity of Protein {protein_mz}")
+        ax.plot(seconds,smoothed_intensities, label=f"smoothed EIC intensity of Protein {protein_mz}")
 
         if args.fit:
             print("Fitting EIC")
             #masking
             removed_dip,xc_guess=get_peaks(final_intensities)
             mask=~np.isnan(removed_dip)
-            plt.plot(seconds,removed_dip,label="EIC after Masking",color='yellow')
+            ax.plot(seconds,removed_dip,label="EIC after Masking",color='yellow')
 
             #fitting and r2 score
 
@@ -428,14 +463,15 @@ def main():
             t_R=np.argmax(removed_dip_fitted)+1
             D=diffusion_coefficient(float(args.parameters[2]),sigma,t_R)
             R_h=hydrodynamic_radius(float(args.parameters[0]),float(args.parameters[1]),D)
-            plt.plot(seconds,removed_dip_fitted,'--',label=f"EIC with R^2 value of {r2} \n and R_h of {R_h}  \n D: {D} \n sigma: {sigma}")
+            ax.plot(seconds,removed_dip_fitted,'--',label=f"EIC with R^2 value of {r2} \n and R_h of {R_h}  \n D: {D} \n sigma: {sigma}")
 
-        plt.xlabel("Seconds")
-        plt.ylabel("Total intensity")
-        plt.title(f"Extracted Ion Chromatograms (EIC) of {protein_mz}m/z of range {protein_sampling_range}")
-        plt.legend()
+        ax.set_xlabel("Seconds")
+        ax.set_ylabel("Total intensity")
+        ax.set_title(f"Extracted Ion Chromatograms (EIC) of {protein_name} with {protein_mz}m/z; sampling range:{protein_sampling_range}")
+        ax.legend()
         plt.grid(True)
-        plt.tight_layout()
+        # ax.tight_layout()
+        results.append(result(final_intensities,seconds,args.parameters,fig,ax))
 
     plt.show()
 
