@@ -60,8 +60,8 @@ def get_final_eic_intensities(spectra, protein_mz, protein_sampling_range)->np.n
 
     return np.array(final_intensities)
 
-def gaus(x, a, x0, sigma):
-    return a * np.exp(-(x - x0)**2 / (2* sigma**2))
+def gaus(x, a, x0, sigma,c):
+    return c + a * np.exp(-(x - x0)**2 / (2* sigma**2))
 
 def fit_curve(y):
 
@@ -236,7 +236,7 @@ def different_approach_gaus_jonathan(y:np.ndarray[float],x:np.ndarray[float],xc)
     p0 = [np.median(y_fit,axis=0), xc, np.log1p(y_fit.max())*y_fit.std(), (y_fit.max() - y_fit.min())**2]
     params,_=curve_fit(new_gauss_from_jonathan,x_fit,y_fit,p0=p0,maxfev=10000)
 
-    return new_gauss_from_jonathan(x,*params)
+    return new_gauss_from_jonathan(x,*params),params[2]
 
 def different_approach_gaus(y:np.ndarray[float],x:np.ndarray[float],xc):
     """
@@ -245,10 +245,10 @@ def different_approach_gaus(y:np.ndarray[float],x:np.ndarray[float],xc):
     mask=~np.isnan(y)
     x_fit=x[mask]
     y_fit=y[mask]
-    p0=[(y_fit.max() - y_fit.min())**2,xc,np.log1p(y_fit.max())*y_fit.std()]
+    p0=[(y_fit.max() - y_fit.min())**2,xc,np.log1p(y_fit.max())*y_fit.std(),np.median(y_fit,axis=0)]
     params,_=curve_fit(gaus,x_fit,y_fit,maxfev=10000)
 
-    return gaus(x,*params)
+    return gaus(x,*params),params[2]
 
 def gauss_constant_fit(y:np.ndarray[float]):
     mod_gaus = lmfit.models.GaussianModel(nan_policy='propagate')
@@ -418,15 +418,15 @@ def main():
             plt.plot(seconds,removed_dip,label="EIC after Masking",color='yellow')
 
             #fitting and r2 score
-            removed_dip_fitted = different_approach_gaus_jonathan(removed_dip, seconds, xc_guess)
+
+            removed_dip_fitted,sigma = different_approach_gaus_jonathan(removed_dip, seconds, xc_guess)
             r2=r2_score(removed_dip[mask],removed_dip_fitted[mask])
             if r2<0.75:
                 print(f"using normal gaus for EIC {protein_mz}")
-                removed_dip_fitted = different_approach_gaus(removed_dip, seconds, xc_guess)
+                removed_dip_fitted,sigma= different_approach_gaus(removed_dip, seconds, xc_guess)
                 r2=r2_score(removed_dip[mask],removed_dip_fitted[mask])
             t_R=np.argmax(removed_dip_fitted)+1
-            sigma=np.std(removed_dip_fitted,ddof=1)
-            D=diffusion_coefficient(t_R,sigma,float(args.parameters[2]))
+            D=diffusion_coefficient(float(args.parameters[2]),sigma,t_R)
             R_h=hydrodynamic_radius(float(args.parameters[0]),float(args.parameters[1]),D)
             plt.plot(seconds,removed_dip_fitted,'--',label=f"EIC with R^2 value of {r2} \n and R_h of {R_h}  \n D: {D} \n sigma: {sigma}")
 
