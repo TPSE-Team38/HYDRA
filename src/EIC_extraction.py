@@ -341,9 +341,13 @@ class result():
         self.peaks=[]
         self.y=y
         self.x=x
+        self.changed=False
         self.params=params
         self.fig,self.ax=fig,ax
         self.cid=self.fig.canvas.mpl_connect("button_press_event",self.on_click)
+        self.recalculated_fit = None
+        self.recalculated_mask = None
+        # self.recalculated_scatter = None
 
     def on_click(self,event):
         if not event.inaxes or len(self.peaks)>2:
@@ -353,11 +357,24 @@ class result():
         self.ax.plot(c, v, 'ro')
         self.fig.canvas.draw()
         if len(self.peaks) == 2:
+            if self.changed:
+                self.recalculated_fit.remove()
+                self.recalculated_mask.remove()
+                # self.recalculated_scatter.remove()
+            if self.peaks[0]>self.peaks[1]:
+                temp=self.peaks[0]
+                self.peaks[0]=self.peaks[1]
+                self.peaks[1]=temp
+                del temp
+            self.changed=True
             masked_y,fitted_y,r2,t_R,D,R_h=recalculate(self.peaks, self.y, self.x, self.params)
-            self.ax.plot(self.x, fitted_y,"--",label=f"recalculated_fit with t_R{t_R}\n and D{D}\n and R_h{R_h}")
-            self.ax.plot(self.x, masked_y,"--",label="recalculated_mask")
+            self.recalculated_fit=self.ax.plot(self.x, fitted_y,"--",label=f"recalculated_fit with t_R of {t_R}\n and diffusion coefficient of {D}\n and R_h of {R_h}")[0]
+            self.recalculated_mask=self.ax.plot(self.x, masked_y,"--",label="recalculated_mask")[0]
+            # self.recalculated_scatter=self.ax.scatter(self.x, self.y,label="original")
+            self.ax.set_ylim(min(*fitted_y,*self.y), max(*fitted_y,*self.y))
             self.fig.canvas.draw()
             self.ax.legend()
+            self.peaks=[]
             plt.show()
 results=[]
 def main():
@@ -450,7 +467,7 @@ def main():
             #masking
             removed_dip,xc_guess=get_peaks(final_intensities)
             mask=~np.isnan(removed_dip)
-            ax.plot(seconds,removed_dip,label="EIC after Masking",color='yellow')
+            ax.plot(seconds,removed_dip,label="EIC after Masking")
 
             #fitting and r2 score
 
@@ -463,6 +480,7 @@ def main():
             t_R=np.argmax(removed_dip_fitted)+1
             D=diffusion_coefficient(float(args.parameters[2]),sigma,t_R)
             R_h=hydrodynamic_radius(float(args.parameters[0]),float(args.parameters[1]),D)
+            ax.set_ylim(min(*removed_dip_fitted,*final_intensities), max(*removed_dip_fitted,*final_intensities))
             ax.plot(seconds,removed_dip_fitted,'--',label=f"EIC with R^2 value of {r2} \n and R_h of {R_h}  \n D: {D} \n sigma: {sigma}")
 
         ax.set_xlabel("Seconds")
