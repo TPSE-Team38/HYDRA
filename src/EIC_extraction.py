@@ -117,20 +117,44 @@ def mask_region(y,left,right):
     return np.concatenate((y[:left],[np.nan]*(right-left),y[right:]))
 
 def new_masking(y:np.ndarray[float],x:np.ndarray[float]):
-    points=np.arange(1,len(y)-1)
+    points=set(range(1,len(y)-1))
     rng=np.random.default_rng()
-    mid=rng.choice(points)
-    np.delete(points,mid)
+    mid=rng.choice(list(points))
+    points.remove(mid)
     leftP,rightP=mid-1,mid+1
     highest_r2=-1
     highest_r2_point=(-1,-1)
     highest_midpoint=-1
     i=0
+    leftDone=False
+    rightDone=False
     while len(points)>0:
-        print(i)
+        saveL, saveR = leftP, rightP
+        leftDone,rightDone=False,False
+        print(mid)
         i+=1
         while leftP>0 and rightP<len(y):
-            print(i)
+            # print(i,highest_r2_point)
+
+            if not leftDone:
+                if rightP>len(y):
+                    if leftP<=0:
+                        leftDone=True
+                    else:
+                        leftP-=1
+                        rightP=saveR
+                else:
+                    rightP+=1
+            else:
+                if not rightDone:
+                    if leftP>0:
+                        if rightP>=len(y):
+                            rightDone=True
+                        else:
+                            rightP+=1
+                            leftP=saveL
+                    else:
+                        leftP+=1
             masked_y=mask_region(y,leftP,rightP)
             mask=~np.isnan(masked_y)
             fitted_y,sigma=different_approach_gaus(masked_y,x,len(y)/2)
@@ -139,8 +163,9 @@ def new_masking(y:np.ndarray[float],x:np.ndarray[float]):
                 highest_r2=r_2
                 highest_r2_point=(leftP,rightP)
                 highest_midpoint=mid
-        mid=rng.choice(points)
-        np.delete(points,mid)
+
+        mid=rng.choice(list(points))
+        points.remove(mid)
 
     return mask_region(y,*highest_r2_point),mid
 
@@ -275,8 +300,10 @@ def different_approach_gaus(y:np.ndarray[float],x:np.ndarray[float],xc):
     x_fit=x[mask]
     y_fit=y[mask]
     p0=[(y_fit.max() - y_fit.min())**2,xc,np.log1p(y_fit.max())*y_fit.std(),np.median(y_fit,axis=0)]
-    params,_=curve_fit(gaus,x_fit,y_fit,maxfev=10000)
-
+    try:
+        params,_=curve_fit(gaus,x_fit,y_fit,maxfev=10000)
+    except:
+        params=[0,0,0,0]
     return gaus(x,*params),params[2]
 
 #not being used
@@ -507,12 +534,12 @@ def main():
 
             #fitting and r2 score
 
-            removed_dip_fitted,sigma = different_approach_gaus_jonathan(removed_dip, seconds, xc_guess)
+            # removed_dip_fitted,sigma = different_approach_gaus_jonathan(removed_dip, seconds, xc_guess)
+            # r2=r2_score(removed_dip[mask],removed_dip_fitted[mask])
+            # if r2<0.75:
+            print(f"using normal gaus for EIC {protein_mz}")
+            removed_dip_fitted,sigma= different_approach_gaus(removed_dip, seconds, xc_guess)
             r2=r2_score(removed_dip[mask],removed_dip_fitted[mask])
-            if r2<0.75:
-                print(f"using normal gaus for EIC {protein_mz}")
-                removed_dip_fitted,sigma= different_approach_gaus(removed_dip, seconds, xc_guess)
-                r2=r2_score(removed_dip[mask],removed_dip_fitted[mask])
             t_R=np.argmax(removed_dip_fitted)+1
             D=diffusion_coefficient(float(args.parameters[2]),sigma,t_R)
             R_h=hydrodynamic_radius(float(args.parameters[0]),float(args.parameters[1]),D)
