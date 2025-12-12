@@ -1,3 +1,5 @@
+import random
+
 import scipy.optimize
 from fontTools.subset import intersect
 from numpy.ma.core import left_shift, masked
@@ -63,6 +65,7 @@ def get_final_eic_intensities(spectra, protein_mz, protein_sampling_range)->np.n
 def gaus(x, a, x0, sigma,c):
     return c + a * np.exp(-(x - x0)**2 / (2* sigma**2))
 
+#not being used
 def fit_curve(y):
 
     x=np.arange(1,len(y)+1)
@@ -76,6 +79,7 @@ def fit_curve(y):
 
     return fit
 
+#not being used
 #finds the peaks of the smoothed graph
 #finds the smallest value between first and last peak: min
 #then sets the mid point of interpolation to double of: biggest peak - min
@@ -109,12 +113,36 @@ def dip_detect_correct(y):
 
     return interpolated
 
+def mask_region(y,left,right):
+    return np.concatenate((y[:left],[np.nan]*(right-left),y[right:]))
 
-def try_flip(y):
-    peak,_=sig.find_peaks(y,height=np.mean(y))
-    max_peak=max(y[peak])
-    result=np.concatenate((y[:peak[0]],[x+((y[peak[0]]-x)*2) for x in y[peak[0]:(peak[-1]-int((peak[-1]-peak[0])/2))]],[x+((y[peak[-1]]-x)*2) for x in y[peak[-1]-int((peak[-1]-peak[0])/2):peak[-1]]],y[peak[-1]:]))
-    return result
+def new_masking(y:np.ndarray[float],x:np.ndarray[float]):
+    points=np.arange(1,len(y)-1)
+    rng=np.random.default_rng()
+    mid=rng.choice(points)
+    np.delete(points,mid)
+    leftP,rightP=mid-1,mid+1
+    highest_r2=-1
+    highest_r2_point=(-1,-1)
+    highest_midpoint=-1
+    i=0
+    while len(points)>0:
+        print(i)
+        i+=1
+        while leftP>0 and rightP<len(y):
+            print(i)
+            masked_y=mask_region(y,leftP,rightP)
+            mask=~np.isnan(masked_y)
+            fitted_y,sigma=different_approach_gaus(masked_y,x,len(y)/2)
+            r_2=r2_score(masked_y[mask],fitted_y[mask])
+            if r_2>highest_r2:
+                highest_r2=r_2
+                highest_r2_point=(leftP,rightP)
+                highest_midpoint=mid
+        mid=rng.choice(points)
+        np.delete(points,mid)
+
+    return mask_region(y,*highest_r2_point),mid
 
 def get_peaks(y):
     #try getting peaks beginning from left then beginning from right (sigmoidal fit)
@@ -173,6 +201,7 @@ def get_peaks(y):
     y_new=np.concatenate((y[:actual_left+1],[np.nan]*len(y[actual_left+1:actual_right]),y[actual_right:]))
     return y_new,leftP+((rightP-leftP)/2)
 
+#not being used
 def get_2_peaks(y:np.ndarray[float],y_nonsmoothed)->np.ndarray[float]:
     """
     Returns y-values with the found noise created by ion suppression removed(replaced by np.nan)
@@ -250,6 +279,7 @@ def different_approach_gaus(y:np.ndarray[float],x:np.ndarray[float],xc):
 
     return gaus(x,*params),params[2]
 
+#not being used
 def gauss_constant_fit(y:np.ndarray[float]):
     mod_gaus = lmfit.models.GaussianModel(nan_policy='propagate')
     mod_const=lmfit.models.ConstantModel(nan_policy='propagate')
@@ -271,6 +301,7 @@ def gauss_constant_fit(y:np.ndarray[float]):
     # out = mod.fit(x=xdat[mask],params=params)
     # return []
 
+#not being used
 def gauss_from_jonathan_lmfit(y:np.ndarray[float],y_original:np.ndarray[float]):
     mod = lmfit.models.Model(new_gauss_from_jonathan,nan_policy='propagate')
     # mod = lmfit.models.GaussianModel(nan_policy='omit')
@@ -289,6 +320,8 @@ def gauss_from_jonathan_lmfit(y:np.ndarray[float],y_original:np.ndarray[float]):
 
 def new_gauss_from_jonathan(y:np.ndarray[float],y_0,xc,w,A):
     return y_0 +((A/(w*np.sqrt(np.pi/2)))*np.exp((-2)*(((y-xc)/w)**2)))
+
+#not being used
 def gaussian_fit_with_removed_dip(y,y_original,x_c):
     obj=BaselineRemoval(y_original)
 
@@ -325,7 +358,6 @@ def hydrodynamic_radius(temp:float,viscosity:float,diffusion_coefficient:float):
     return (boltzmann_c*temp)/(6*np.pi*viscosity*diffusion_coefficient)
 
 def recalculate(peaks,y,x,params):
-    print(peaks)
     masked_y=np.concatenate((y[:peaks[0][0]],[np.nan]*(peaks[1][0]-peaks[0][0]),y[peaks[1][0]:]))
     mask=~np.isnan(masked_y)
     fitted,sigma=different_approach_gaus(masked_y,x,x[-1]/2)
@@ -334,8 +366,7 @@ def recalculate(peaks,y,x,params):
     D = diffusion_coefficient(float(params[2]), sigma, t_R)
     R_h = hydrodynamic_radius(float(params[0]), float(params[1]), D)
     return masked_y,fitted,r2,t_R,D,R_h
-    #todo
-    return
+
 class result():
     def __init__(self,y,x,params,fig,ax):
         self.peaks=[]
@@ -346,7 +377,7 @@ class result():
         self.fig,self.ax=fig,ax
         self.cid=self.fig.canvas.mpl_connect("button_press_event",self.on_click)
         self.recalculated_fit = None
-        self.recalculated_mask = None
+        # self.recalculated_mask = None
         # self.recalculated_scatter = None
 
     def on_click(self,event):
@@ -359,7 +390,7 @@ class result():
         if len(self.peaks) == 2:
             if self.changed:
                 self.recalculated_fit.remove()
-                self.recalculated_mask.remove()
+                # self.recalculated_mask.remove()
                 # self.recalculated_scatter.remove()
             if self.peaks[0]>self.peaks[1]:
                 temp=self.peaks[0]
@@ -368,15 +399,17 @@ class result():
                 del temp
             self.changed=True
             masked_y,fitted_y,r2,t_R,D,R_h=recalculate(self.peaks, self.y, self.x, self.params)
-            self.recalculated_fit=self.ax.plot(self.x, fitted_y,"--",label=f"recalculated_fit with t_R of {t_R}\n and diffusion coefficient of {D}\n and R_h of {R_h}")[0]
-            self.recalculated_mask=self.ax.plot(self.x, masked_y,"--",label="recalculated_mask")[0]
+            self.recalculated_fit=self.ax.plot(self.x, fitted_y,"--",label=f"recalculated_fit with r_2 score of {r2}\n t_R of {t_R}\n and diffusion coefficient of {D}\n and R_h of {R_h}")[0]
+            # self.recalculated_mask=self.ax.plot(self.x, masked_y,"--",label="recalculated_mask")[0]
             # self.recalculated_scatter=self.ax.scatter(self.x, self.y,label="original")
             self.ax.set_ylim(min(*fitted_y,*self.y), max(*fitted_y,*self.y))
             self.fig.canvas.draw()
             self.ax.legend()
             self.peaks=[]
             plt.show()
+
 results=[]
+
 def main():
 
     parser = argparse.ArgumentParser(
@@ -460,13 +493,16 @@ def main():
         ax.set_ylim(min(final_intensities), max(final_intensities))
         #smoothing
         smoothed_intensities=sig.savgol_filter(final_intensities, int(args.smooth[0]), int(args.smooth[1]))
-        ax.plot(seconds,smoothed_intensities, label=f"smoothed EIC intensity of Protein {protein_mz}")
+        # ax.plot(seconds,smoothed_intensities, label=f"smoothed EIC intensity of Protein {protein_mz}")
 
         if args.fit:
             print("Fitting EIC")
             #masking
             removed_dip,xc_guess=get_peaks(final_intensities)
+            print(removed_dip)
+            removed_dip,xc_guess=new_masking(final_intensities,seconds)
             mask=~np.isnan(removed_dip)
+            print(removed_dip)
             ax.plot(seconds,removed_dip,label="EIC after Masking")
 
             #fitting and r2 score
