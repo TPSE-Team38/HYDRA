@@ -16,9 +16,9 @@ from scipy.optimize import curve_fit,least_squares
 import lmfit
 from scipy.signal import find_peaks
 from sklearn.metrics import r2_score
-from Fitting_and_masking import *
-from plotting import result
-from Calculations import *
+from .Fitting_and_masking import *
+from .plotting import result
+from .Calculations import *
 def load_ms1(path):
     """Read all MS1 spectra from a file into a list."""
     spectra = []
@@ -57,7 +57,7 @@ def get_final_eic_intensities(spectra, protein_mz, protein_sampling_range)->np.n
 
     return np.array(final_intensities)
 
-def get_all_intensity(spectra,protein_mz,original_charge_state,protein_sampling_range,charge_list):
+def get_all_intensity(spectra,protein_mz,protein_sampling_range,original_charge_state,charge_list):
     """sums intensities for each second including only m/z extracted using charge_list"""
     final_intensities_arr=[]
     for z in charge_list:

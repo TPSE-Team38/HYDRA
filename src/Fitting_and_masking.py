@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.optimize import curve_fit
-from Calculations import gaus,new_gauss_from_jonathan
+from .Calculations import gaus,new_gauss_from_jonathan
 import scipy.signal as sig
 from scipy import interpolate
 '''might be needed'''

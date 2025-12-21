@@ -162,8 +162,6 @@ class EICExtractorGUI(QMainWindow):
 
             extractor = EICExtractor(self.current_file)
             extractor.load_ms1()
-            self.spe
-            extractor.load_ms1()
             x, y = extractor.extract_eic(target_mz, mz_window)
 
 
