@@ -27,12 +27,10 @@ def load_ms1(path):
             spectra.append(spect)
     return spectra
 
-
 def is_in_region(spectrum, min_mz, max_mz):
     """ return true or false , if m/z inside region. select only m/z , that inside the region [min_mz, max_mz]"""
     mz_array = spectrum['m/z array']
     return (mz_array>= min_mz) & (mz_array <= max_mz)
-
 
 def get_intensities_of_region(spectrum, min_mz, max_mz):
     """Return all intensities of only m/z , that inside the region [min_mz, max_mz]."""
@@ -59,6 +57,20 @@ def get_final_eic_intensities(spectra, protein_mz, protein_sampling_range)->np.n
 
     return np.array(final_intensities)
 
+def get_all_intensity(spectra,protein_mz,original_charge_state,protein_sampling_range,charge_list):
+    """sums intensities for each second including only m/z extracted using charge_list"""
+    final_intensities_arr=[]
+    for z in charge_list:
+        final_intensities_arr.append(
+            get_final_eic_intensities(spectra, mz_to_mz(protein_mz, original_charge_state, z), protein_sampling_range))
+
+    # summation of intensities of mz(s)
+    final_intensities = [0] * len(final_intensities_arr[0])
+    for final_intensity in final_intensities_arr:
+        for i in range(len(final_intensity)):
+            final_intensities[i] += final_intensity[i]
+
+    return final_intensities
 
 def recalculate(peaks,y,x,params):
     masked_y=np.concatenate((y[:peaks[0][0]],[np.nan]*(peaks[1][0]-peaks[0][0]),y[peaks[1][0]:]))
@@ -141,16 +153,16 @@ def main():
         fig,ax=plt.subplots()
         final_intensities_arr=[]
         z_vals=get_z_vals(charge_state,charge_state_range)
-
-        for z in z_vals:
-            final_intensities_arr.append(get_final_eic_intensities(spectra, mz_to_mz(protein_mz,charge_state,z), protein_sampling_range))
-
-        #summation of intensities of mz(s)
-        final_intensities=[0]*len(final_intensities_arr[0])
-        for final_intensity in final_intensities_arr:
-            for i in range(len(final_intensity)):
-                final_intensities[i]+=final_intensity[i]
-
+        #
+        # for z in z_vals:
+        #     final_intensities_arr.append(get_final_eic_intensities(spectra, mz_to_mz(protein_mz,charge_state,z), protein_sampling_range))
+        #
+        # #summation of intensities of mz(s)
+        # final_intensities=[0]*len(final_intensities_arr[0])
+        # for final_intensity in final_intensities_arr:
+        #     for i in range(len(final_intensity)):
+        #         final_intensities[i]+=final_intensity[i]
+        final_intensities=get_all_intensity(spectra,protein_mz,charge_state,protein_sampling_range,z_vals)
         seconds = np.arange(1, len(final_intensities) + 1)
         ax.set_xlim(0, seconds[-1])
         ax.set_ylim(min(final_intensities), max(final_intensities))
@@ -174,8 +186,8 @@ def main():
             # r2=r2_score(removed_dip[mask],removed_dip_fitted[mask])
             # if r2<0.75:
             # print(f"using normal gaus for EIC {protein_mz}")
-            removed_dip_fitted,sigma= gaussian_fit(removed_dip, seconds, xc_guess)
             # removed_dip_fitted,sigma= different_approach_gaus_jonathan(removed_dip, seconds, xc_guess)
+            removed_dip_fitted,sigma= gaussian_fit(removed_dip, seconds, xc_guess)
             r2=r2_score(removed_dip[mask],removed_dip_fitted[mask])
             t_R=np.argmax(removed_dip_fitted)+1
             D=diffusion_coefficient(float(params[2]),sigma,t_R)
