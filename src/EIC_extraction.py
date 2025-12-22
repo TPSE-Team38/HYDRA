@@ -17,7 +17,7 @@ import lmfit
 from scipy.signal import find_peaks
 from sklearn.metrics import r2_score
 from .Fitting_and_masking import *
-from .plotting import result
+from .plotting import result_plot
 from .Calculations import *
 def load_ms1(path):
     """Read all MS1 spectra from a file into a list."""
@@ -203,7 +203,7 @@ def main():
         ax.legend()
         plt.grid(True)
         # ax.tight_layout()
-        results.append(result(final_intensities,seconds,params,fig,ax,recalculate))
+        results.append(result_plot(final_intensities,seconds,params,fig,ax,recalculate))
 
     plt.show()
 

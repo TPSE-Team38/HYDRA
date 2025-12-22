@@ -1,7 +1,7 @@
 from typing import Callable
 import matplotlib.pyplot as plt
 
-class result():
+class result_plot():
     def __init__(self,y,x,params,fig,ax,func:Callable):
         self.peaks=[]
         self.y=y

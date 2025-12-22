@@ -8,5 +8,5 @@ class AnalysisController:
     def run(self, config):
 
         result = run_analysis(config)
-        self.plot.show_eic(result)
+        self.plot.show_eic(result, config)
 

@@ -6,9 +6,12 @@ from matplotlib.backends.backend_qtagg import (
     FigureCanvasQTAgg as FigureCanvas,
     NavigationToolbar2QT as NavigationToolbar
 )
-from src.plotting import result
+from src.plotting import result_plot
 from src.EIC_extraction import recalculate, results
 import numpy as np
+from src.models import AnalysisConfig
+from src.pipeline import run_analysis
+
 
 from src.Calculations import mz_to_mz
 
@@ -19,11 +22,12 @@ class PlotWidget(FigureCanvasQTAgg):
         self.ax = self.fig.add_subplot(111)
         super().__init__(self.fig)
 
-    def show_eic(self, result):
+    def show_eic(self, result, config= None):
         """
         result: object EICResult(seconds, final_intensities, removed_dip, removed_dip_fitted, r2, tR, sigma, D, Rh, t, p)
         """
         self.ax.clear()
+
         self.ax.set_xlim(1, result.seconds[-1])
         self.ax.set_ylim(min(result.final_intensities), max(result.final_intensities))
         self.ax.plot(result.seconds, result.final_intensities, lw=1.5)
@@ -46,7 +50,11 @@ class PlotWidget(FigureCanvasQTAgg):
 
         self.fig.tight_layout()
         self.draw()
-        #results.append(result(result.final_intensities,result.seconds,params,fig,ax,recalculate))
+
+        if config:
+            params = [config.temperature, config.viscosity, config.capillary_radius, config.capillary_length, config.flow_rate, config.mz_window, config.charge_state, config.charge_range]
+
+            results.append(result_plot(result.final_intensities, result.seconds, params, self.fig, self.ax, recalculate))
 
         #self.ax.canvas.draw()
         #self.ax.canvas.mpl_connect()
