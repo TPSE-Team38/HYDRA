@@ -29,4 +29,19 @@ def run_analysis(config):
     p = peclet(Rh, config.temperature, config.viscosity,
                config.capillary_radius, config.flow_rate)
 
-    return EICResult(seconds, final_intensities, removed_dip, removed_dip_fitted, r2, tR, sigma, D, Rh, t, p)
+    return EICResult(
+        config.protein_mz,
+        config.mz_window,
+        config.charge_state,
+        config.charge_range,
+        seconds,
+        final_intensities,
+        removed_dip,
+        removed_dip_fitted,
+        r2,
+        tR,
+        sigma,
+        D,
+        Rh,
+        t,
+        p)

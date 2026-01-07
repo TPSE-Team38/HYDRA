@@ -1,12 +1,14 @@
 from src.pipeline import run_analysis
 
 class AnalysisController:
-    def __init__(self, plot_widget, parent):
-        self.plot = plot_widget
-        self.parent = parent
+    def __init__(self, plot, window):
+        self.plot = plot
+        self.window = window
 
-    def run(self, config):
+    def run(self, config, store=True):
+        result = run_analysis(config)  # backend
 
-        result = run_analysis(config)
-        self.plot.show_eic(result, config)
+        if store:
+            self.plot.show_eic(result)
 
+        return result

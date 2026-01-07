@@ -18,6 +18,12 @@ class AnalysisConfig:
 
 @dataclass
 class EICResult:
+    # metadata
+    protein_mz: float
+    mz_window: float
+    charge_state: int
+    charge_range: int
+
     seconds: np.ndarray
     final_intensities: np.ndarray
     removed_dip: np.ndarray

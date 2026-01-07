@@ -1,5 +1,6 @@
 import numpy as np
-from scipy.stats import boltzmann
+
+from scipy.constants import k as boltzmann_c
 
 
 def diffusion_coefficient(capillary_radius,standard_deviation : float,t_R:float):
@@ -8,20 +9,28 @@ def diffusion_coefficient(capillary_radius,standard_deviation : float,t_R:float)
     return((capillary_radius**2)*t_R)/(24*(standard_deviation**2))
 
 def hydrodynamic_radius(temp:float,viscosity:float,diffusion_coefficient:float):
-    from scipy.constants import k as boltzmann_c
     return (boltzmann_c*temp)/(6*np.pi*viscosity*diffusion_coefficient)
 
 def peclet(R_h,temperature,viscosity,capillary_radius,flow_rate):
-    if boltzmann == 0 or capillary_radius <= 0 or temperature <= 0:
+
+    T_in_kelvin = temperature + 273.15
+    radius_in_meter = capillary_radius * (10 ** -6)
+    Q_in_meter_cube_per_sec = (flow_rate * (10 ** -9)) / 60
+
+    if boltzmann_c == 0 or radius_in_meter <= 0 or T_in_kelvin <= 0:
         return np.nan
-    from scipy.constants import k as boltzmann_c
-    return 6 * viscosity * (flow_rate*(10**-9) / 60) * R_h / (boltzmann_c * (temperature) * capillary_radius)
+    return (6 * viscosity * Q_in_meter_cube_per_sec * R_h) / (boltzmann_c * T_in_kelvin * radius_in_meter)
 
 def tau(T,L,viscosity,Q,R_h):
     if viscosity <= 0 or Q <= 0 or R_h <= 0 :
         return np.nan
-    from scipy.constants import k as k_b
-    return (k_b*T*L)/(6*viscosity*Q*R_h)
+
+    T_in_kelvin = T + 273.15
+    L_in_meter = L * (10**-2)
+    Q_in_meter_cube_per_sec = (Q * (10**-9)) / 60
+
+
+    return (boltzmann_c*T_in_kelvin*L_in_meter)/(6*viscosity*Q_in_meter_cube_per_sec*R_h)
 
 def get_z_vals(charge_state,charge_state_range):
     offset=np.floor(charge_state_range / 2)
