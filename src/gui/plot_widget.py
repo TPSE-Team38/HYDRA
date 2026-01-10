@@ -6,7 +6,7 @@ from matplotlib.backends.backend_qtagg import (
     FigureCanvasQTAgg as FigureCanvas,
     NavigationToolbar2QT as NavigationToolbar
 )
-from src.plotting import result_plot
+from src.plotting import ResultPlot
 from src.EIC_extraction import recalculate, results
 import numpy as np
 from src.models import AnalysisConfig
@@ -54,7 +54,7 @@ class PlotWidget(FigureCanvasQTAgg):
         if config:
             params = [config.temperature, config.viscosity, config.capillary_radius, config.capillary_length, config.flow_rate, config.mz_window, config.charge_state, config.charge_range]
 
-            results.append(result_plot(result.final_intensities, result.seconds, params, self.fig, self.ax, recalculate))
+            results.append(ResultPlot(result.final_intensities, result.seconds, params, self.fig, self.ax, recalculate))
 
         #self.ax.canvas.draw()
         #self.ax.canvas.mpl_connect()

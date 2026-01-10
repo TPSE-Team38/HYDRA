@@ -7,8 +7,9 @@ class AnalysisController:
 
     def run(self, config, store=True):
         result = run_analysis(config)  # backend
+        self.plot.show_eic(result, config)
 
         if store:
-            self.plot.show_eic(result)
+            self.plot.show_eic(result, config)
 
         return result
