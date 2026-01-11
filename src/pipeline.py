@@ -5,8 +5,7 @@ from .Calculations import *
 from .models import EICResult
 from sklearn.metrics import r2_score
 
-def run_analysis(config):
-    spectra = load_ms1(config.ms1_path)
+def run_analysis(spectra,config):
 
     seconds, final_intensities = extract_eic(
         spectra,

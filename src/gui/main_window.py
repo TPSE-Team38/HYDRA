@@ -1,7 +1,9 @@
+from datetime import datetime
+
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QLabel, QPushButton, QFileDialog,
     QVBoxLayout, QHBoxLayout, QGridLayout, QGroupBox,
-    QLineEdit, QSplitter, QTextEdit, QMessageBox, QScrollArea
+    QLineEdit, QSplitter, QTextEdit, QMessageBox, QScrollArea, QApplication
 )
 from PySide6.QtCore import Qt
 from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as NavigationToolbar
@@ -11,6 +13,7 @@ from .controller import AnalysisController
 from .protein_row import ProteinInputRow
 from src.models import AnalysisConfig
 from src.Calculations import tau, peclet
+
 
 
 class MainWindow(QMainWindow):
@@ -141,11 +144,16 @@ class MainWindow(QMainWindow):
         upper_layout.addWidget(upper_splitter)
 
         # ---------- Analyse Button ----------
-        analyse_btn = QPushButton("Analyse Data")
-        analyse_btn.setStyleSheet("font-size: 16px; font-weight: bold;")
-        analyse_btn.clicked.connect(self.run)
+        self.analyse_btn = QPushButton("Analyse Data")
+        self.analyse_btn.setStyleSheet("font-size: 16px; font-weight: bold;")
+        self.analyse_btn.clicked.connect(self.run)
+        upper_layout.addWidget(self.analyse_btn, alignment=Qt.AlignmentFlag.AlignCenter)
 
-        upper_layout.addWidget(analyse_btn, alignment=Qt.AlignmentFlag.AlignCenter)
+        # ---------- Export Button ----------
+        self.export_btn = QPushButton("Export Results as PDF")
+        self.export_btn.setEnabled(False)
+        self.export_btn.clicked.connect(self.export_pdf)
+        upper_layout.addWidget(self.export_btn, alignment=Qt.AlignmentFlag.AlignCenter)
 
         main_splitter.addWidget(upper_widget)
 
@@ -193,16 +201,21 @@ class MainWindow(QMainWindow):
     # ================= ACTIONS =================
 
     def add_protein_row(self):
-        row = ProteinInputRow()
+        row = ProteinInputRow(parent_window=self)
         self.protein_rows.append(row)
         self.protein_list_layout.addWidget(row)
 
     def load_file(self):
         path, _ = QFileDialog.getOpenFileName(self, "Select ms1 file", "", "*.ms1")
         if path:
+            self.file_status.setText("Loading...")
+            self.file_status.setStyleSheet("color: orange; font-weight: bold;")
+            QApplication.processEvents()
+            self.controller.load_ms1_once(path)
             self.ms1_path = path
             self.file_status.setText("✔ ms1 file loaded")
             self.file_status.setStyleSheet("color: green;")
+
 
     def run(self):
         if not self.ms1_path:
@@ -224,7 +237,9 @@ class MainWindow(QMainWindow):
                 "Please enter at least one complete protein row."
             )
             return
-
+        self.analyse_btn.setText("Analysing...")
+        self.analyse_btn.setEnabled(False)
+        QApplication.processEvents()
         try:
             for i, row in enumerate(valid_rows, start=1):
                 config = AnalysisConfig(
@@ -245,23 +260,14 @@ class MainWindow(QMainWindow):
                     QMessageBox.critical(self, "Analysis failed", "Analysis returned no result.")
                     return
                 self.analysis_results.append(result)
-
+            self.analyse_btn.setText("Analyse Data")
+            self.analyse_btn.setEnabled(True)
+            self.export_btn.setEnabled(True)
             self.current_result_index = 0
             self.show_current_result()
 
         except ValueError:
             QMessageBox.critical(self, "Invalid input", "Check protein or parameter values.")
-
-    def is_row_valid(self, row: ProteinInputRow) -> bool:
-        try:
-            return all([
-            row.mz.text().strip(),
-            row.range.text().strip(),
-            row.charge.text().strip(),
-            row.charge_range.text().strip()
-        ])
-        except RuntimeError:
-            return False
 
     def show_current_result(self):
         if not self.analysis_results:
@@ -276,13 +282,24 @@ class MainWindow(QMainWindow):
             f"Charge: {result.charge_state} range {result.charge_range}\n\n"
             f"t_R: {result.tR:.2f} s\n"
             f"σ: {result.sigma:.3e}\n"
-            f"r2: {result.r2: }\n"
-            f"Rh: {result.Rh:.3e} m\n"
+            f"R²: {result.r2: }\n"
+            f"R_h: {result.Rh:.3e} m\n"
             f"Tau: {result.t:.3f}\n"
             f"Péclet: {result.p:.3e}"
         )
         self.prev_btn.setEnabled(self.current_result_index > 0)
         self.next_btn.setEnabled(self.current_result_index < len(self.analysis_results) - 1)
+
+    def is_row_valid(self, row: ProteinInputRow) -> bool:
+        try:
+            return all([
+                row.mz.text().strip(),
+                row.range.text().strip(),
+                row.charge.text().strip(),
+                row.charge_range.text().strip()
+            ])
+        except RuntimeError:
+            return False
 
     def show_next(self):
         if self.current_result_index < len(self.analysis_results) - 1:
@@ -348,3 +365,113 @@ class MainWindow(QMainWindow):
         Update the info panel on the right side of the UI.
         """
         self.info_box.setText(text)
+
+    def export_pdf(self):
+        if not self.analysis_results:
+            QMessageBox.warning(
+                self,
+                "No results",
+                "Run the analysis before exporting."
+            )
+            return
+
+        now = datetime.now()
+        timestamp = now.strftime("%Y%m%d_%H%M%S")
+        file_name = f"analysis_results_{timestamp}.pdf"
+
+        path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Export results as PDF",
+            file_name,
+            "PDF files (*.pdf)"
+        )
+        if not path:
+            return
+
+        try:
+            from matplotlib.backends.backend_pdf import PdfPages
+            import matplotlib.pyplot as plt
+            import numpy as np
+
+            with PdfPages(path) as pdf:
+                for i, result in enumerate(self.analysis_results, start=1):
+                    fig = plt.figure(figsize=(8.5, 11))
+                    gs = fig.add_gridspec(2, 1, height_ratios=[3, 1])
+
+                    # ================= PLOT =================
+                    ax_plot = fig.add_subplot(gs[0])
+
+                    ax_plot.set_xlim(1, result.seconds[-1])
+                    ax_plot.set_ylim(
+                        min(*result.final_intensities, *result.removed_dip_fitted),
+                        max(*result.final_intensities, *result.removed_dip_fitted)
+                    )
+
+                    # EIC
+                    ax_plot.scatter(
+                        result.seconds,
+                        result.final_intensities,
+                        s=20,
+                        alpha=0.8,
+                        color="red",
+                        label="Masked data points"
+                    )
+
+                    # Masked
+                    ax_plot.scatter(
+                        result.seconds,
+                        result.removed_dip,
+                        s=20,
+                        alpha=0.9,
+                        color="orange",
+                        label="EIC after Masking"
+                    )
+
+                    # Fit
+                    ax_plot.plot(
+                        result.seconds,
+                        result.removed_dip_fitted,
+                        "--",
+                        linewidth=2,
+                        color="blue",
+                        label=f"Fit (R²={result.r2:.3f})"
+                    )
+
+                    ax_plot.set_xlabel("Time (s)")
+                    ax_plot.set_ylabel("Intensity")
+                    ax_plot.set_title(f"Protein {i}: m/z {result.protein_mz}")
+                    ax_plot.grid(True)
+                    ax_plot.legend(fontsize=9)
+
+
+                    fig.subplots_adjust(
+                        left=0.12,
+                        right=0.95,
+                        top=0.93,
+                        bottom=0.32
+                    )
+
+                    # ================= TEXT =================
+                    ax_text = fig.add_subplot(gs[1])
+                    ax_text.axis("off")
+
+                    summary = (
+                        f"Protein {i} / {len(self.analysis_results)}\n"
+                        f"m/z: {result.protein_mz} range {result.mz_window}\n"
+                        f"Charge: {result.charge_state} range {result.charge_range}\n\n"
+                        f"t_R: {result.tR:.2f} s\n"
+                        f"sigma: {result.sigma:.3e}\n"
+                        f"R²: {result.r2:.3f}\n"
+                        f"R_h: {result.Rh:.3e} m\n"
+                        f"Tau: {result.t:.3f}\n"
+                        f"Péclet: {result.p:.3e}"
+                    )
+
+                    ax_text.text(0.02, 0.95, summary, va="top", fontsize=11)
+
+                    pdf.savefig(fig)
+                    plt.close(fig)
+
+        except Exception as e:
+            QMessageBox.critical(self, "Export failed", str(e))
+
