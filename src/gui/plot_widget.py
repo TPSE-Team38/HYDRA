@@ -30,16 +30,16 @@ class PlotWidget(FigureCanvasQTAgg):
 
         self.ax.set_xlim(1, result.seconds[-1])
         self.ax.set_ylim(min(result.final_intensities), max(result.final_intensities))
-        self.ax.plot(result.seconds, result.final_intensities, lw=1.5)
+        self.ax.scatter(result.seconds, result.final_intensities, lw=1.5)
 
         # Masking
-        self.ax.scatter(result.seconds, result.removed_dip, label="EIC after Masking")
-        self.ax.scatter(result.seconds, [v if v not in result.removed_dip else np.nan for v in result.final_intensities])
+        self.ax.scatter(result.seconds, result.removed_dip, label="EIC after Masking",color="orange")
+        self.ax.scatter(result.seconds, [v if v not in result.removed_dip else np.nan for v in result.final_intensities],color="red")
 
         #Fitting
         self.ax.set_ylim(min(*result.removed_dip_fitted, *result.final_intensities), max(*result.removed_dip_fitted, *result.final_intensities))
         self.ax.plot(result.seconds, result.removed_dip_fitted, '--',
-                label=f"Fitted EIC with R^2 value of {result.r2} \n and R_h of {result.Rh}  \n D: {result.D} \n sigma: {result.sigma} \n tau: {result.t} \n peclet: {result.p}")
+                label=f"Fitted EIC with R^2 value of {result.r2} \n and R_h of {result.Rh}  \n D: {result.D} \n sigma: {result.sigma} \n tau: {result.t} \n peclet: {result.p}",color="blue")
 
         self.ax.set_xlabel("Time (s)")
         self.ax.set_ylabel("Intensity")

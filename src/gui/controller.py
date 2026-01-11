@@ -1,13 +1,23 @@
+from src.EIC_extraction import load_ms1
 from src.pipeline import run_analysis
 
 class AnalysisController:
     def __init__(self, plot, window):
         self.plot = plot
         self.window = window
+        self.spectra = None
+        self.ms1_path = None
+
+    def load_ms1_once(self, path):
+        if self.spectra is None or self.ms1_path != path:
+            self.spectra = load_ms1(path)
+            self.ms1_path = path
 
     def run(self, config, store=True):
-        result = run_analysis(config)  # backend
-        self.plot.show_eic(result, config)
+        if self.spectra is None:
+            raise RuntimeError("ms1 file not loaded")
+
+        result = run_analysis(self.spectra, config)
 
         if store:
             self.plot.show_eic(result, config)

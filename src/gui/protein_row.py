@@ -1,8 +1,9 @@
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QLineEdit, QPushButton
 
 class ProteinInputRow(QWidget):
-    def __init__(self):
+    def __init__(self, parent_window=None):
         super().__init__()
+        self.parent_window = parent_window
 
         layout = QHBoxLayout(self)
 
