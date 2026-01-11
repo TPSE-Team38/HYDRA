@@ -126,7 +126,7 @@ class MainWindow(QMainWindow):
         self.peclet_out = QLineEdit()
         self.peclet_out.setReadOnly(True)
 
-        tau_layout.addWidget(QLabel("Estimated Rh (nm)"))
+        tau_layout.addWidget(QLabel("Estimated Rh (m)"))
         tau_layout.addWidget(self.estimated_rh_input)
         tau_layout.addWidget(self.calc_tau_btn)
         tau_layout.addWidget(QLabel("Tau (τ)"))

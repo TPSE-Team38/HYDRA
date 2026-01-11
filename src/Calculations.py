@@ -4,12 +4,16 @@ from scipy.constants import k as boltzmann_c
 
 
 def diffusion_coefficient(capillary_radius,standard_deviation : float,t_R:float):
+
+    radius_in_meter = capillary_radius * (10 ** -6)
+
     if standard_deviation <= 0:
         return np.nan
-    return((capillary_radius**2)*t_R)/(24*(standard_deviation**2))
+    return((radius_in_meter**2)*t_R)/(24*(standard_deviation**2))
 
 def hydrodynamic_radius(temp:float,viscosity:float,diffusion_coefficient:float):
-    return (boltzmann_c*temp)/(6*np.pi*viscosity*diffusion_coefficient)
+    T_in_kelvin = temp + 273.15
+    return (boltzmann_c*T_in_kelvin)/(6*np.pi*viscosity*diffusion_coefficient)
 
 def peclet(R_h,temperature,viscosity,capillary_radius,flow_rate):
 
@@ -28,6 +32,7 @@ def tau(T,L,viscosity,Q,R_h):
     T_in_kelvin = T + 273.15
     L_in_meter = L * (10**-2)
     Q_in_meter_cube_per_sec = (Q * (10**-9)) / 60
+
 
 
     return (boltzmann_c*T_in_kelvin*L_in_meter)/(6*viscosity*Q_in_meter_cube_per_sec*R_h)
