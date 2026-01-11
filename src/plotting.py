@@ -20,12 +20,11 @@ class ResultPlot:
         self.peaks=[]
         self.y=y
         self.x=x
-        self.changed=False
         self.new_points_plot=[]
         self.params=params
         self.fig,self.ax=fig,ax
         self.cid=self.fig.canvas.mpl_connect("button_press_event",self.on_click)
-        self.recalculated_fit =None
+        self.recalculated_fit=None
         self.func=func
         # self.recalculated_mask = None
         # self.recalculated_scatter = None
@@ -38,21 +37,19 @@ class ResultPlot:
             self.new_points_plot[1].remove()
             self.new_points_plot.pop()
             self.new_points_plot.pop()
-            plt.show()
             self.fig.canvas.draw()
         c, v = int(event.xdata), self.y[int(event.xdata)]
         self.peaks.append((c, v))
-        self.new_points_plot=self.ax.plot(c, v, 'x')
+        self.new_points_plot.append(self.ax.plot(c, v, 'x')[0])
         self.fig.canvas.draw()
         if len(self.peaks) == 2:
-            if self.changed:
-                self.changed=False
+            if self.recalculated_fit:
                 self.recalculated_fit.remove()
                 self.recalculated_fit=None
+                self.ax.legend()
+                self.fig.canvas.draw()
                 # self.recalculated_mask.remove()
                 # self.recalculated_scatter.remove()
-            else:
-                self.changed=True
 
             if self.peaks[0]>self.peaks[1]:
                 temp=self.peaks[0]
@@ -65,7 +62,7 @@ class ResultPlot:
             # self.recalculated_mask=self.ax.plot(self.x, masked_y,"--",label="recalculated_mask")[0]
             # self.recalculated_scatter=self.ax.scatter(self.x, self.y,label="original")
             self.ax.set_ylim(min(*fitted_y,*self.y), max(*fitted_y,*self.y))
-            self.fig.canvas.draw()
+            # self.fig.canvas.draw()
             self.ax.legend()
             self.peaks=[]
-            plt.show()
+            self.fig.canvas.draw_idle()
