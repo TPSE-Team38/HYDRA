@@ -72,7 +72,7 @@ def get_all_intensity(spectra,protein_mz,protein_sampling_range,original_charge_
 
     return final_intensities
 
-def recalculate(peaks,y,x,params):
+def recalculate(peaks,y,x,params:np.ndarray[float]):
     masked_y=np.concatenate((y[:peaks[0][0]],[np.nan]*(peaks[1][0]-peaks[0][0]),y[peaks[1][0]:]))
     mask=~np.isnan(masked_y)
     fitted,sigma=gaussian_fit(masked_y,x,x[-1]/2)
@@ -80,7 +80,9 @@ def recalculate(peaks,y,x,params):
     t_R = np.argmax(y) + 1
     D = diffusion_coefficient(float(params[2]), sigma, t_R)
     R_h = hydrodynamic_radius(float(params[0]), float(params[1]), D)
-    return masked_y,fitted,r2,t_R,D,R_h
+    t=tau(params[0],params[3],params[1],params[4],R_h)
+    p=peclet(R_h,params[0],params[1],params[2],params[4])
+    return masked_y,fitted,r2,t_R,D,R_h,t,p
 
 results=[]
 

@@ -19,7 +19,7 @@ class AnalysisController:
 
         result = run_analysis(self.spectra, config)
 
-        if store:
-            self.plot.show_eic(result, config)
+        # if store:
+        self.plot.show_eic(result, config)
 
         return result

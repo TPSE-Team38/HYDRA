@@ -290,7 +290,18 @@ class MainWindow(QMainWindow):
             return
 
         result = self.analysis_results[self.current_result_index]
-        self.plot.show_eic(result)
+        self.plot.show_eic(result,config=AnalysisConfig(
+            ms1_path=self.ms1_path,
+            protein_mz=float(result.protein_mz),
+            mz_window=float(result.mz_window),
+            charge_state=int(result.charge_state),
+            charge_range=int(result.charge_range),
+            temperature=float(self.temp_input.text()),
+            viscosity=float(self.viscosity_input.text()),
+            capillary_radius=float(self.radius_input.text()),
+            capillary_length=float(self.radius_input.text()),
+            flow_rate=float(self.flow_input.text())
+        ))
 
         self.update_info(
             f"Protein {self.current_result_index + 1} / {len(self.analysis_results)}\n"

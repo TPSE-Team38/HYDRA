@@ -6,8 +6,10 @@ from matplotlib.backends.backend_qtagg import (
     FigureCanvasQTAgg as FigureCanvas,
     NavigationToolbar2QT as NavigationToolbar
 )
+
+import src
 from src.plotting import ResultPlot
-from src.EIC_extraction import recalculate, results
+from src.EIC_extraction import recalculate,results
 import numpy as np
 from src.models import AnalysisConfig
 from src.pipeline import run_analysis
@@ -21,6 +23,7 @@ class PlotWidget(FigureCanvasQTAgg):
         self.fig = Figure(figsize=(6, 4))
         self.ax = self.fig.add_subplot(111)
         super().__init__(self.fig)
+        self.curr_res=None
 
     def show_eic(self, result, config= None):
         """
@@ -39,8 +42,8 @@ class PlotWidget(FigureCanvasQTAgg):
         #Fitting
         self.ax.set_ylim(min(*result.removed_dip_fitted, *result.final_intensities), max(*result.removed_dip_fitted, *result.final_intensities))
         self.ax.plot(result.seconds, result.removed_dip_fitted, '--',
-                label=f"Fitted EIC with R^2 value of {result.r2} ")
-                      #\n and R_h of {result.Rh}  \n D: {result.D} \n sigma: {result.sigma} \n tau: {result.t} \n peclet: {result.p}",color="blue")
+                     label=f"Fitted EIC with R^2 value of {result.r2} ")
+        #\n and R_h of {result.Rh}  \n D: {result.D} \n sigma: {result.sigma} \n tau: {result.t} \n peclet: {result.p}",color="blue")
 
         self.ax.set_xlabel("Time (s)")
         self.ax.set_ylabel("Intensity")
@@ -54,8 +57,11 @@ class PlotWidget(FigureCanvasQTAgg):
 
         if config:
             params = [config.temperature, config.viscosity, config.capillary_radius, config.capillary_length, config.flow_rate, config.mz_window, config.charge_state, config.charge_range]
-
-            results.append(ResultPlot(result.final_intensities, result.seconds, params, self.fig, self.ax, recalculate))
+            # from src.EIC_extraction import results
+            # if len(src.EIC_extraction.results)>0:
+            #     src.EIC_extraction.results.clear()
+            # src.EIC_extraction.results.append(ResultPlot(result.final_intensities, result.seconds, params, self.fig, self.ax, recalculate))
+            self.curr_res=ResultPlot(result.final_intensities, result.seconds, params, self.fig, self.ax, recalculate)
 
         #self.ax.canvas.draw()
         #self.ax.canvas.mpl_connect()
