@@ -150,8 +150,15 @@ class MainWindow(QMainWindow):
         main_splitter.addWidget(upper_widget)
 
         # ================= LOWER PANEL =================
+
+        lower_splitter = QSplitter(Qt.Orientation.Horizontal)
+
+        # ---------- Plot ----------
         plot_container = QWidget()
         plot_layout = QVBoxLayout(plot_container)
+
+        # Remove margins so the plot fits snugly
+        plot_layout.setContentsMargins(0, 0, 0, 0)
 
         toolbar = NavigationToolbar(self.plot, self)
 
@@ -159,7 +166,24 @@ class MainWindow(QMainWindow):
         plot_layout.addWidget(toolbar)
         plot_layout.addWidget(self.plot)
 
-        main_splitter.addWidget(plot_container)
+        lower_splitter.addWidget(plot_container)
+
+        #main_splitter.setStretchFactor(0, 0)
+        #main_splitter.setStretchFactor(1, 1)
+
+        # info box
+        self.info_box = QTextEdit()
+        self.info_box.setReadOnly(True)
+        self.info_box.setMinimumWidth(250)
+        self.info_box.setMaximumWidth(400)
+        self.info_box.setPlaceholderText("Analysis results will appear here")
+
+        lower_splitter.addWidget(self.info_box)
+
+        lower_splitter.setStretchFactor(0, 3)
+        lower_splitter.setStretchFactor(1, 1)
+
+        main_splitter.addWidget(lower_splitter)
 
         main_splitter.setStretchFactor(0, 0)
         main_splitter.setStretchFactor(1, 1)
@@ -182,13 +206,6 @@ class MainWindow(QMainWindow):
 
         main_layout.addLayout(nav_layout)
 
-        # info box
-        self.info_box = QTextEdit()
-        self.info_box.setReadOnly(True)
-        self.info_box.setMinimumWidth(250)
-        self.info_box.setPlaceholderText("Analysis results will appear here")
-        main_splitter.addWidget(self.info_box)
-        main_splitter.setStretchFactor(1, 1)
 
     # ================= ACTIONS =================
 
