@@ -222,7 +222,16 @@ class MainWindow(QMainWindow):
 
         main_layout.addLayout(nav_layout)
 
+        # ---------- Reset Button ----------
+        self.reset_btn = QPushButton("Reset Masking")
+        self.reset_btn.setEnabled(True)
+        self.reset_btn.clicked.connect(self.reset_masking)
+        main_layout.addWidget(self.reset_btn, alignment=Qt.AlignmentFlag.AlignCenter)
+
     # ================= ACTIONS =================
+    def reset_masking(self):
+        #TODO
+        return
 
     def add_protein_row(self):
         row = ProteinInputRow(parent_window=self)
