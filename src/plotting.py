@@ -2,6 +2,7 @@ from typing import Callable
 
 import matplotlib.pyplot as plt
 import numpy as np
+from PySide6.QtWidgets import QPushButton
 
 from matplotlib.lines import Line2D
 
@@ -18,7 +19,7 @@ class ResultPlot:
     func: Callable
     new_points_plot: list[plt.Line2D]
 
-    def __init__(self,y,x,params,fig,ax,func:Callable,EIC_result:EICResult):
+    def __init__(self,y,x,params,fig,ax,func:Callable,EIC_result:EICResult,reset_btn:QPushButton,show_result:Callable):
         self.peaks=[]
         self.y=y
         self.x=x
@@ -29,6 +30,9 @@ class ResultPlot:
         self.recalculated_fit=None
         self.func=func
         self.EIC_result = EIC_result
+        self.reset_btn=reset_btn
+        self.reset_btn.clicked.connect(self.on_reset)
+        self.show_result = show_result
         # self.recalculated_mask = None
         # self.recalculated_scatter = None
 
@@ -81,3 +85,16 @@ class ResultPlot:
             self.EIC_result.p=p
             # self.EIC_result=EICResult(self.EIC_result.protein_mz,self.EIC_result.mz_window,self.EIC_result.charge_state,self.EIC_result.charge_range,self.EIC_result.seconds,self.EIC_result.final_intensities,*(resSet))
             self.fig.canvas.draw_idle()
+
+    def on_reset(self):
+        self.EIC_result.removed_dip=self.EIC_result.original_removed_dip
+        self.EIC_result.removed_dip_fitted=self.EIC_result.original_removed_dip_fitted
+        self.EIC_result.r2=self.EIC_result.original_r2
+        self.EIC_result.tR=self.EIC_result.original_tR
+        self.EIC_result.sigma=self.EIC_result.original_sigma
+        self.EIC_result.D=self.EIC_result.original_D
+        self.EIC_result.Rh=self.EIC_result.original_Rh
+        self.EIC_result.t=self.EIC_result.original_t
+        self.EIC_result.p=self.EIC_result.original_p
+        self.show_result()
+        return

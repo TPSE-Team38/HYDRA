@@ -21,7 +21,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("Catalyst 2.0")
         self.resize(1200, 800)
-
+        self.reset_btn =None
         self.ms1_path = None
         self.protein_rows = []
         self.analysis_results = []  # list of results
@@ -31,6 +31,7 @@ class MainWindow(QMainWindow):
         self.controller = AnalysisController(self.plot, self)
         self.plot.fig.canvas.mpl_connect("button_press_event",self.reload_plot)
         self._build_ui()
+
         self.clickCount=0
     def reload_plot(self,event):
         if not event.inaxes or self.plot.fig.canvas.toolbar.mode !="":
@@ -225,13 +226,13 @@ class MainWindow(QMainWindow):
         # ---------- Reset Button ----------
         self.reset_btn = QPushButton("Reset Masking")
         self.reset_btn.setEnabled(True)
-        self.reset_btn.clicked.connect(self.reset_masking)
+        # self.reset_btn.clicked.connect(self.reset_masking)
         main_layout.addWidget(self.reset_btn, alignment=Qt.AlignmentFlag.AlignCenter)
 
     # ================= ACTIONS =================
     def reset_masking(self):
         #TODO
-        return
+        self.show_current_result()
 
     def add_protein_row(self):
         row = ProteinInputRow(parent_window=self)
@@ -288,7 +289,7 @@ class MainWindow(QMainWindow):
                     flow_rate=float(self.flow_input.text()),
                 )
 
-                result = self.controller.run(config, store=False)
+                result = self.controller.run(config,self.reset_btn,self.reset_masking, store=False)
                 if result is None:
                     QMessageBox.critical(self, "Analysis failed", "Analysis returned no result.")
                     return
@@ -307,7 +308,7 @@ class MainWindow(QMainWindow):
             return
 
         result = self.analysis_results[self.current_result_index]
-        self.plot.show_eic(result,config=AnalysisConfig(
+        self.plot.show_eic(result,self.reset_btn,self.reset_masking,config=AnalysisConfig(
             ms1_path=self.ms1_path,
             protein_mz=float(result.protein_mz),
             mz_window=float(result.mz_window),

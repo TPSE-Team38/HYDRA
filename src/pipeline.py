@@ -29,6 +29,7 @@ def run_analysis(spectra,config):
                config.capillary_radius, config.flow_rate)
 
     return EICResult(
+        False,
         config.protein_mz,
         config.mz_window,
         config.charge_state,
@@ -43,4 +44,14 @@ def run_analysis(spectra,config):
         D,
         Rh,
         t,
-        p)
+        p,
+        removed_dip,
+        removed_dip_fitted,
+        r2,
+        tR,
+        sigma,
+        D,
+        Rh,
+        t,
+        p
+        )
