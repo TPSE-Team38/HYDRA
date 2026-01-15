@@ -29,9 +29,17 @@ class MainWindow(QMainWindow):
 
         self.plot = PlotWidget()
         self.controller = AnalysisController(self.plot, self)
-
+        self.plot.fig.canvas.mpl_connect("button_press_event",self.reload_plot)
         self._build_ui()
-
+        self.clickCount=0
+    def reload_plot(self,event):
+        if not event.inaxes or self.plot.fig.canvas.toolbar.mode !="":
+            return
+        if self.clickCount<2:
+            self.clickCount += 1
+            return
+        self.clickCount = 0
+        self.show_current_result()
     # ================= UI =================
 
     def _build_ui(self):

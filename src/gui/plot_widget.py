@@ -61,7 +61,7 @@ class PlotWidget(FigureCanvasQTAgg):
             # if len(src.EIC_extraction.results)>0:
             #     src.EIC_extraction.results.clear()
             # src.EIC_extraction.results.append(ResultPlot(result.final_intensities, result.seconds, params, self.fig, self.ax, recalculate))
-            self.curr_res=ResultPlot(result.final_intensities, result.seconds, params, self.fig, self.ax, recalculate)
+            self.curr_res=ResultPlot(result.final_intensities, result.seconds, params, self.fig, self.ax, recalculate,result)
 
         #self.ax.canvas.draw()
         #self.ax.canvas.mpl_connect()

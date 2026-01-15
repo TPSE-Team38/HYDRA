@@ -1,13 +1,11 @@
 from typing import Callable
 
-import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
-import sys
 
-from matplotlib.artist import Artist
 from matplotlib.lines import Line2D
 
+from src.models import EICResult
 
 class ResultPlot:
     y: np.ndarray
@@ -19,7 +17,8 @@ class ResultPlot:
     ax: plt.Axes
     func: Callable
     new_points_plot: list[plt.Line2D]
-    def __init__(self,y,x,params,fig,ax,func:Callable):
+
+    def __init__(self,y,x,params,fig,ax,func:Callable,EIC_result:EICResult):
         self.peaks=[]
         self.y=y
         self.x=x
@@ -29,6 +28,7 @@ class ResultPlot:
         self.cid=self.fig.canvas.mpl_connect("button_press_event",self.on_click)
         self.recalculated_fit=None
         self.func=func
+        self.EIC_result = EIC_result
         # self.recalculated_mask = None
         # self.recalculated_scatter = None
 
@@ -59,8 +59,9 @@ class ResultPlot:
                 self.peaks[0]=self.peaks[1]
                 self.peaks[1]=temp
                 del temp
-
-            masked_y,fitted_y,r2,t_R,D,R_h,t,p=self.func(self.peaks, self.y, self.x, self.params)
+#masked_y,fitted_y,r2,t_R,D,R_h,t,p
+            resSet=self.func(self.peaks, self.y, self.x, self.params)
+            masked_y, fitted_y, r2, t_R,sigma, D, R_h, t, p=resSet
             self.recalculated_fit=self.ax.plot(self.x, fitted_y,"--",label=f"recalculated_fit with r_2 score of {r2}\n t_R of {t_R}\n and diffusion coefficient of {D}\n and R_h of {R_h}")[0]
             # self.recalculated_mask=self.ax.plot(self.x, masked_y,"--",label="recalculated_mask")[0]
             # self.recalculated_scatter=self.ax.scatter(self.x, self.y,label="original")
@@ -68,4 +69,15 @@ class ResultPlot:
             # self.fig.canvas.draw()
             self.ax.legend()
             self.peaks=[]
+
+            self.EIC_result.removed_dip=masked_y
+            self.EIC_result.removed_dip_fitted=fitted_y
+            self.EIC_result.r2=r2
+            self.EIC_result.tR=t_R
+            self.EIC_result.sigma=sigma
+            self.EIC_result.D=D
+            self.EIC_result.Rh=R_h
+            self.EIC_result.t=t
+            self.EIC_result.p=p
+            # self.EIC_result=EICResult(self.EIC_result.protein_mz,self.EIC_result.mz_window,self.EIC_result.charge_state,self.EIC_result.charge_range,self.EIC_result.seconds,self.EIC_result.final_intensities,*(resSet))
             self.fig.canvas.draw_idle()

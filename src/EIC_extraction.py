@@ -16,6 +16,8 @@ from scipy.optimize import curve_fit,least_squares
 import lmfit
 from scipy.signal import find_peaks
 from sklearn.metrics import r2_score
+
+from src.models import EICResult
 from .Fitting_and_masking import *
 from .plotting import ResultPlot
 from .Calculations import *
@@ -82,7 +84,7 @@ def recalculate(peaks,y,x,params:np.ndarray[float]):
     R_h = hydrodynamic_radius(float(params[0]), float(params[1]), D)
     t=tau(params[0],params[3],params[1],params[4],R_h)
     p=peclet(R_h,params[0],params[1],params[2],params[4])
-    return masked_y,fitted,r2,t_R,D,R_h,t,p
+    return masked_y,fitted,r2,t_R,sigma,D,R_h,t,p
 
 results=[]
 
