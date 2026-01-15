@@ -25,7 +25,7 @@ class PlotWidget(FigureCanvasQTAgg):
         self.curr_res=None
         super().__init__(self.fig)
 
-    def show_eic(self, result, reset_btn,show_result, config= None):
+    def show_eic(self, result, reset_btn,show_result,abort_remasking_btn,continue_remasking_btn,show_recalculated_fit, config= None):
         """
         result: object EICResult(seconds, final_intensities, removed_dip, removed_dip_fitted, r2, tR, sigma, D, Rh, t, p)
         """
@@ -58,4 +58,4 @@ class PlotWidget(FigureCanvasQTAgg):
         #
         if config:
             params = [config.temperature, config.viscosity, config.capillary_radius, config.capillary_length, config.flow_rate, config.mz_window, config.charge_state, config.charge_range]
-            self.curr_res=ResultPlot(result.final_intensities, result.seconds, params, self.fig, self.ax, recalculate,result,reset_btn,show_result)
+            self.curr_res=ResultPlot(result.final_intensities, result.seconds, params, self.fig, self.ax, recalculate,result,reset_btn,abort_remasking_btn,continue_remasking_btn,show_result,show_recalculated_fit)

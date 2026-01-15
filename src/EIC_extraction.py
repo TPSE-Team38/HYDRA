@@ -79,7 +79,7 @@ def recalculate(peaks,y,x,params:np.ndarray[float]):
     mask=~np.isnan(masked_y)
     fitted,sigma=gaussian_fit(masked_y,x,x[-1]/2)
     r2 = r2_score(masked_y[mask], fitted[mask])
-    t_R = np.argmax(y) + 1
+    t_R = np.argmax(fitted) + 1
     D = diffusion_coefficient(float(params[2]), sigma, t_R)
     R_h = hydrodynamic_radius(float(params[0]), float(params[1]), D)
     t=tau(params[0],params[3],params[1],params[4],R_h)

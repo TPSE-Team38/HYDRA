@@ -1,11 +1,12 @@
 from typing import Callable
 
+import matplotlib.backend_bases
 import matplotlib.pyplot as plt
 import numpy as np
 from PySide6.QtWidgets import QPushButton
 
 from matplotlib.lines import Line2D
-
+from matplotlib.widgets import Button
 from src.models import EICResult
 
 class ResultPlot:
@@ -19,7 +20,10 @@ class ResultPlot:
     func: Callable
     new_points_plot: list[plt.Line2D]
 
-    def __init__(self,y,x,params,fig,ax,func:Callable,EIC_result:EICResult,reset_btn:QPushButton,show_result:Callable):
+    def __init__(self,y,x,params,fig,ax,func:Callable,EIC_result:EICResult,reset_btn:QPushButton,abort_remasking_btn:QPushButton,continue_remasking_btn:QPushButton,show_result:Callable,show_recalculated_fit:Callable):
+        self.results_of_remasking = None
+        self.continue_btn = continue_remasking_btn
+        self.abort_btn = abort_remasking_btn
         self.peaks=[]
         self.y=y
         self.x=x
@@ -27,64 +31,86 @@ class ResultPlot:
         self.params=params
         self.fig,self.ax=fig,ax
         self.cid=self.fig.canvas.mpl_connect("button_press_event",self.on_click)
-        self.recalculated_fit=None
+        self.recalculated_fit = None
         self.func=func
         self.EIC_result = EIC_result
         self.reset_btn=reset_btn
         self.reset_btn.clicked.connect(self.on_reset)
         self.show_result = show_result
-        # self.recalculated_mask = None
-        # self.recalculated_scatter = None
+        self.currently_remasking=False
+        self.show_recalculated_fit=show_recalculated_fit
 
     def on_click(self,event):
-        if not event.inaxes or len(self.peaks)>2 or self.fig.canvas.toolbar.mode != "":
+        if (not event.inaxes is self.ax) or len(self.peaks)>2 or self.fig.canvas.toolbar.mode != "" or self.currently_remasking:
             return
-        if len(self.new_points_plot)>1:
-            self.new_points_plot[0].remove()
-            self.new_points_plot[1].remove()
-            self.new_points_plot.pop()
-            self.new_points_plot.pop()
-            self.fig.canvas.draw()
+        if len(self.new_points_plot)>2:
+            try:
+                self.new_points_plot[0].remove()
+                self.new_points_plot[1].remove()
+                self.new_points_plot.pop()
+                self.new_points_plot.pop()
+            except NotImplementedError:
+                pass
+            # self.fig.canvas.draw()
         c, v = int(event.xdata), self.y[int(event.xdata)]
         self.peaks.append((c, v))
-        self.new_points_plot.append(self.ax.plot(c, v, 'x')[0])
+        self.new_points_plot.append(self.ax.plot(c, v, 'x',color="green")[0])
         self.fig.canvas.draw()
         if len(self.peaks) == 2:
+            self.currently_remasking=True
             if self.recalculated_fit:
-                self.recalculated_fit.remove()
-                self.recalculated_fit=None
-                self.ax.legend()
-                self.fig.canvas.draw()
-                # self.recalculated_mask.remove()
-                # self.recalculated_scatter.remove()
+                try:
+                    self.recalculated_fit.remove()
+                    self.recalculated_fit=None
+                except NotImplementedError:
+                    pass
 
             if self.peaks[0]>self.peaks[1]:
                 temp=self.peaks[0]
                 self.peaks[0]=self.peaks[1]
                 self.peaks[1]=temp
                 del temp
-#masked_y,fitted_y,r2,t_R,D,R_h,t,p
-            resSet=self.func(self.peaks, self.y, self.x, self.params)
-            masked_y, fitted_y, r2, t_R,sigma, D, R_h, t, p=resSet
-            self.recalculated_fit=self.ax.plot(self.x, fitted_y,"--",label=f"recalculated_fit with r_2 score of {r2}\n t_R of {t_R}\n and diffusion coefficient of {D}\n and R_h of {R_h}")[0]
-            # self.recalculated_mask=self.ax.plot(self.x, masked_y,"--",label="recalculated_mask")[0]
-            # self.recalculated_scatter=self.ax.scatter(self.x, self.y,label="original")
-            self.ax.set_ylim(min(*fitted_y,*self.y), max(*fitted_y,*self.y))
-            # self.fig.canvas.draw()
-            self.ax.legend()
+
+            self.results_of_remasking=self.func(self.peaks, self.y, self.x, self.params)
+            masked_y, fitted_y, r2, t_R,sigma, D, R_h, t, p=self.results_of_remasking
+
+            self.recalculated_fit=self.ax.plot(self.x, fitted_y,"--")[0]
+
+            self.ax.set_ylim(min(*fitted_y,*self.y,*self.EIC_result.removed_dip_fitted), max(*fitted_y,*self.y,*self.EIC_result.removed_dip_fitted))
+            self.abort_btn.setEnabled(True)
+            self.continue_btn.setEnabled(True)
+            self.abort_btn.clicked.connect(self.on_abort)
+            self.continue_btn.clicked.connect(self.on_continue)
+
+            self.fig.tight_layout()
+            self.fig.canvas.draw_idle()
+            self.show_recalculated_fit(*self.results_of_remasking)
             self.peaks=[]
 
-            self.EIC_result.removed_dip=masked_y
-            self.EIC_result.removed_dip_fitted=fitted_y
-            self.EIC_result.r2=r2
-            self.EIC_result.tR=t_R
-            self.EIC_result.sigma=sigma
-            self.EIC_result.D=D
-            self.EIC_result.Rh=R_h
-            self.EIC_result.t=t
-            self.EIC_result.p=p
-            # self.EIC_result=EICResult(self.EIC_result.protein_mz,self.EIC_result.mz_window,self.EIC_result.charge_state,self.EIC_result.charge_range,self.EIC_result.seconds,self.EIC_result.final_intensities,*(resSet))
-            self.fig.canvas.draw_idle()
+
+    def on_abort(self):
+        self.show_result()
+        self.abort_btn.setEnabled(False)
+        self.continue_btn.setEnabled(False)
+        self.currently_remasking=False
+        self.fig.canvas.draw_idle()
+
+    def on_continue(self):
+        masked_y, fitted_y, r2, t_R, sigma, D, R_h, t, p=self.results_of_remasking
+        self.EIC_result.removed_dip = masked_y
+        self.EIC_result.removed_dip_fitted = fitted_y
+        self.EIC_result.r2 = r2
+        self.EIC_result.tR = t_R
+        self.EIC_result.sigma = sigma
+        self.EIC_result.D = D
+        self.EIC_result.Rh = R_h
+        self.EIC_result.t = t
+        self.EIC_result.p = p
+        self.show_result()
+        self.abort_btn.setEnabled(False)
+        self.continue_btn.setEnabled(False)
+        self.currently_remasking=False
+        self.fig.canvas.draw_idle()
 
     def on_reset(self):
         self.EIC_result.removed_dip=self.EIC_result.original_removed_dip

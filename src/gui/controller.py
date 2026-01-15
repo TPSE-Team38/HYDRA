@@ -13,13 +13,13 @@ class AnalysisController:
             self.spectra = load_ms1(path)
             self.ms1_path = path
 
-    def run(self, config,reset_btn,show_result, store=True):
+    def run(self, config,reset_btn,abort_remasking_btn,continue_remasking_btn,show_result, store=True):
         if self.spectra is None:
             raise RuntimeError("ms1 file not loaded")
 
         result = run_analysis(self.spectra, config)
 
         # if store:
-        self.plot.show_eic(result,reset_btn,show_result, config)
+        self.plot.show_eic(result,reset_btn,abort_remasking_btn,continue_remasking_btn,show_result, config)
 
         return result

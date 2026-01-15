@@ -21,7 +21,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("Catalyst 2.0")
         self.resize(1200, 800)
-        self.reset_btn =None
+        self.reset_btn,self.abort_remasking_btn,self.continue_remasking_btn =None,None,None
         self.ms1_path = None
         self.protein_rows = []
         self.analysis_results = []  # list of results
@@ -29,18 +29,18 @@ class MainWindow(QMainWindow):
 
         self.plot = PlotWidget()
         self.controller = AnalysisController(self.plot, self)
-        self.plot.fig.canvas.mpl_connect("button_press_event",self.reload_plot)
+        # self.plot.fig.canvas.mpl_connect("button_press_event",self.reload_plot)
         self._build_ui()
 
-        self.clickCount=0
-    def reload_plot(self,event):
-        if not event.inaxes or self.plot.fig.canvas.toolbar.mode !="":
-            return
-        if self.clickCount<2:
-            self.clickCount += 1
-            return
-        self.clickCount = 0
-        self.show_current_result()
+        # self.clickCount=0
+    # def reload_plot(self,event):
+    #     if not event.inaxes or self.plot.fig.canvas.toolbar.mode !="":
+    #         return
+    #     if self.clickCount<2:
+    #         self.clickCount += 1
+    #         return
+    #     self.clickCount = 0
+    #     self.show_current_result()
     # ================= UI =================
 
     def _build_ui(self):
@@ -212,27 +212,55 @@ class MainWindow(QMainWindow):
         nav_layout = QHBoxLayout()
 
         self.prev_btn = QPushButton("< Previous")
+        self.abort_remasking_btn = QPushButton("Abort Remasking Ø")
+        self.continue_remasking_btn = QPushButton("Confirm Remasking ✓")
         self.next_btn = QPushButton("Next >")
 
         self.prev_btn.clicked.connect(self.show_previous)
         self.next_btn.clicked.connect(self.show_next)
-
+        self.continue_remasking_btn.setEnabled(False)
+        self.abort_remasking_btn.setEnabled(False)
+        # ---------- Reset Button ----------
+        self.reset_btn = QPushButton("Reset Masking")
+        self.reset_btn.setEnabled(True)
         nav_layout.addWidget(self.prev_btn)
-        nav_layout.addStretch()
+        # nav_layout.addStretch()
+        nav_layout.addWidget(self.abort_remasking_btn)
+        # nav_layout.addStretch(1)
+        nav_layout.addWidget(self.reset_btn)
+        # nav_layout.addStretch(1)
+        nav_layout.addWidget(self.continue_remasking_btn)
+        # nav_layout.addStretch(1)
         nav_layout.addWidget(self.next_btn)
 
         main_layout.addLayout(nav_layout)
 
-        # ---------- Reset Button ----------
-        self.reset_btn = QPushButton("Reset Masking")
-        self.reset_btn.setEnabled(True)
-        # self.reset_btn.clicked.connect(self.reset_masking)
-        main_layout.addWidget(self.reset_btn, alignment=Qt.AlignmentFlag.AlignCenter)
 
     # ================= ACTIONS =================
     def reset_masking(self):
-        #TODO
         self.show_current_result()
+
+    def show_recalculated_fit(self,masked_y, fitted_y, r2, t_R, sigma, D, R_h, t, p):
+        result=self.analysis_results[self.current_result_index]
+        self.update_info(
+            f"Protein {self.current_result_index + 1} / {len(self.analysis_results)}\n"
+            f"m/z: {result.protein_mz} range {result.mz_window}\n"
+            f"Charge: {result.charge_state} range {result.charge_range}\n\n"
+            "Previous Fit:\n \n"
+            f"t_R: {result.tR:.2f} s\n"
+            f"σ: {result.sigma:.3e}\n"
+            f"R²: {result.r2: }\n"
+            f"R_h: {result.Rh:.3e} m\n"
+            f"Tau: {result.t:.3f}\n"
+            f"Péclet: {result.p:.3e}\n \n"
+            "Recalculated Fit:\n"
+            f"t_R: {t_R:.2f} s\n"
+            f"σ: {sigma:.3e}\n"
+            f"R²: {r2:}\n"
+            f"R_h: {R_h:.3e} m\n"
+            f"Tau: {t:.3f}\n"
+            f"Péclet: {p:.3e}\n"
+        )
 
     def add_protein_row(self):
         row = ProteinInputRow(parent_window=self)
@@ -289,7 +317,7 @@ class MainWindow(QMainWindow):
                     flow_rate=float(self.flow_input.text()),
                 )
 
-                result = self.controller.run(config,self.reset_btn,self.reset_masking, store=False)
+                result = self.controller.run(config,self.reset_btn,self.abort_remasking_btn,self.continue_remasking_btn,self.show_current_result, store=False)
                 if result is None:
                     QMessageBox.critical(self, "Analysis failed", "Analysis returned no result.")
                     return
@@ -308,7 +336,7 @@ class MainWindow(QMainWindow):
             return
 
         result = self.analysis_results[self.current_result_index]
-        self.plot.show_eic(result,self.reset_btn,self.reset_masking,config=AnalysisConfig(
+        self.plot.show_eic(result,self.reset_btn,self.show_current_result,self.abort_remasking_btn,self.continue_remasking_btn,self.show_recalculated_fit,config=AnalysisConfig(
             ms1_path=self.ms1_path,
             protein_mz=float(result.protein_mz),
             mz_window=float(result.mz_window),
