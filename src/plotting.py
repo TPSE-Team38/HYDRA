@@ -79,6 +79,7 @@ class ResultPlot:
             self.ax.set_ylim(min(*fitted_y,*self.y,*self.EIC_result.removed_dip_fitted), max(*fitted_y,*self.y,*self.EIC_result.removed_dip_fitted))
             self.abort_btn.setEnabled(True)
             self.continue_btn.setEnabled(True)
+            self.reset_btn.setEnabled(False)
             self.abort_btn.clicked.connect(self.on_abort)
             self.continue_btn.clicked.connect(self.on_continue)
 
@@ -92,6 +93,7 @@ class ResultPlot:
         self.show_result()
         self.abort_btn.setEnabled(False)
         self.continue_btn.setEnabled(False)
+        self.reset_btn.setEnabled(True)
         self.currently_remasking=False
         self.fig.canvas.draw_idle()
 
@@ -109,6 +111,7 @@ class ResultPlot:
         self.show_result()
         self.abort_btn.setEnabled(False)
         self.continue_btn.setEnabled(False)
+        self.reset_btn.setEnabled(True)
         self.currently_remasking=False
         self.fig.canvas.draw_idle()
 

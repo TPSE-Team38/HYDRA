@@ -1,4 +1,7 @@
-.venv
-venv
-.idea
+.venv/
+venv/
+.idea/
 *.ms1
+main.spec
+dist/
+build/
