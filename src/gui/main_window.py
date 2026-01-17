@@ -1,11 +1,13 @@
 from datetime import datetime
+from pathlib import Path
 
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QLabel, QPushButton, QFileDialog,
     QVBoxLayout, QHBoxLayout, QGridLayout, QGroupBox,
-    QLineEdit, QSplitter, QTextEdit, QMessageBox, QScrollArea, QApplication
+    QLineEdit, QSplitter, QTextEdit, QMessageBox, QScrollArea, QApplication,QSystemTrayIcon
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt,QThreadPool,Signal,QObject,QRunnable
+from PySide6.QtGui import QIcon,QPixmap
 from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as NavigationToolbar
 
 from .plot_widget import PlotWidget
@@ -14,6 +16,9 @@ from .protein_row import ProteinInputRow
 from src.models import AnalysisConfig
 from src.Calculations import tau, peclet
 
+import os
+
+from ..parallization import LoadMS1Worker
 
 
 class MainWindow(QMainWindow):
@@ -22,6 +27,8 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Catalyst 2.0")
         self.resize(1200, 800)
         self.reset_btn,self.abort_remasking_btn,self.continue_remasking_btn =None,None,None
+        self.icon=QIcon("./assets/catalyst.ico")
+        self.setWindowIcon(self.icon)
         self.ms1_path = None
         self.protein_rows = []
         self.analysis_results = []  # list of results
@@ -29,18 +36,8 @@ class MainWindow(QMainWindow):
 
         self.plot = PlotWidget()
         self.controller = AnalysisController(self.plot, self)
-        # self.plot.fig.canvas.mpl_connect("button_press_event",self.reload_plot)
         self._build_ui()
 
-        # self.clickCount=0
-    # def reload_plot(self,event):
-    #     if not event.inaxes or self.plot.fig.canvas.toolbar.mode !="":
-    #         return
-    #     if self.clickCount<2:
-    #         self.clickCount += 1
-    #         return
-    #     self.clickCount = 0
-    #     self.show_current_result()
     # ================= UI =================
 
     def _build_ui(self):
@@ -50,8 +47,8 @@ class MainWindow(QMainWindow):
         # ---------- TOP BAR ----------
         top_bar = QHBoxLayout()
 
-        load_btn = QPushButton("Upload ms1 file")
-        load_btn.clicked.connect(self.load_file)
+        self.load_btn = QPushButton("Upload ms1 file")
+        self.load_btn.clicked.connect(self.load_file)
 
         self.file_status = QLabel("No ms1 file loaded")
         self.file_status.setStyleSheet("color: red;")
@@ -60,7 +57,7 @@ class MainWindow(QMainWindow):
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title.setStyleSheet("font-size: 21px; font-weight: bold;")
 
-        top_bar.addWidget(load_btn)
+        top_bar.addWidget(self.load_btn)
         top_bar.addWidget(self.file_status)
         top_bar.addStretch()
         top_bar.addWidget(title)
@@ -272,12 +269,30 @@ class MainWindow(QMainWindow):
         if path:
             self.file_status.setText("Loading...")
             self.file_status.setStyleSheet("color: orange; font-weight: bold;")
+            self.load_btn.setEnabled(False)
             QApplication.processEvents()
-            self.controller.load_ms1_once(path)
-            self.ms1_path = path
-            self.file_status.setText("✔ ms1 file loaded")
-            self.file_status.setStyleSheet("color: green;")
+            worker=LoadMS1Worker(self.controller.load_ms1_once,path)
+            worker.signals.finished.connect(self.on_ms1_loaded)
+            worker.signals.error.connect(self.on_ms1_error)
+            QThreadPool.globalInstance().start(worker)
+            # self.threadpool.globalInstance().start(self.controller.load_ms1_once(path))
+            # self.controller.load_ms1_once(path)
+            # self.ms1_path = path
+            # self.intermediate_path=path
+            # self.file_status.setText("✔ ms1 file loaded")
+            # self.file_status.setStyleSheet("color: green;")
 
+    def on_ms1_loaded(self,path):
+        self.ms1_path = path
+        self.load_btn.setEnabled(True)
+        self.file_status.setText("✔ ms1 file loaded")
+        self.file_status.setStyleSheet("color: green;")
+
+    def on_ms1_error(self, msg):
+        self.file_status.setText("❌ Failed to load ms1")
+        self.file_status.setStyleSheet("color: red;")
+        self.load_btn.setEnabled(True)
+        print(msg)
 
     def run(self):
         if not self.ms1_path:
