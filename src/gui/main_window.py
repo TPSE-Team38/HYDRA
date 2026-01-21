@@ -277,27 +277,44 @@ class MainWindow(QMainWindow):
 
     def show_recalculated_fit(self,masked_y, fitted_y, r2, t_R, sigma, D, R_h, t, p):
         result=self.analysis_results[self.current_result_index]
+
+        r2_value = f"{result.r2}"
+        if result.r2 >= 0.95:
+            r2_colored = f'<span style = "color:green"> {r2_value}</span>'
+        elif 0.95 > result.r2 >= 0.9:
+            r2_colored = f'<span style = "color:orange"> {r2_value}</span>'
+        else:
+            r2_colored = f'<span style = "color:red"> {r2_value}</span>'
+
+        r2_value = f"{r2}"
+        if result.r2 >= 0.95:
+            r2_colored_remasked = f'<span style = "color:green"> {r2_value}</span>'
+        elif 0.95 > result.r2 >= 0.9:
+            r2_colored_remasked = f'<span style = "color:orange"> {r2_value}</span>'
+        else:
+            r2_colored_remasked = f'<span style = "color:red"> {r2_value}</span>'
+
         self.update_info(
-            f"Protein {self.current_result_index + 1} / {len(self.analysis_results)}\n"
-            f"{self.protein_rows[self.current_result_index].proteinName.text()}\n"
-            f"m/z: {result.protein_mz} range {result.mz_window}\n"
-            f"Charge: {result.charge_state} range {result.charge_range}\n\n"
-            "Previous Fit:\n \n"
-            f"t_R: {result.tR:.2f} s\n"
-            f"σ: {result.sigma:.3e}\n"
-            f"R²: {result.r2: }\n"
-            f"R_h: {result.Rh:.3e} m\n"
-            f"D: {result.D:.3e} m²/s\n"
-            f"Tau: {result.t:.3f}\n"
-            f"Péclet: {result.p:.3e}\n \n"
-            "Recalculated Fit:\n"
-            f"t_R: {t_R:.2f} s\n"
-            f"σ: {sigma:.3e}\n"
-            f"R²: {r2:}\n"
-            f"R_h: {R_h:.3e} m\n"
-            f"D: {D:.3e} m²/s\n"
-            f"Tau: {t:.3f}\n"
-            f"Péclet: {p:.3e}\n"
+            f"Protein {self.current_result_index + 1} / {len(self.analysis_results)}<br>"
+            f"{self.protein_rows[self.current_result_index].proteinName.text()}<br>"
+            f"m/z: {result.protein_mz} range {result.mz_window}<br>"
+            f"Charge: {result.charge_state} range {result.charge_range}<br><br>"
+            "Previous Fit:<br> <br>"
+            f"t_R: {result.tR:.2f} s<br>"
+            f"σ: {result.sigma:.3e}<br>"
+            f"R²: {r2_colored}<br>"
+            f"R_h: {result.Rh:.3e} m<br>"
+            f"D: {result.D:.3e} m²/s<br>"
+            f"Tau: {result.t:.3f}<br>"
+            f"Péclet: {result.p:.3e}<br> <br>"
+            "Recalculated Fit:<br>"
+            f"t_R: {t_R:.2f} s<br>"
+            f"σ: {sigma:.3e}<br>"
+            f"R²: {r2_colored_remasked}<br>"
+            f"R_h: {R_h:.3e} m<br>"
+            f"D: {D:.3e} m²/s<br>"
+            f"Tau: {t:.3f}<br>"
+            f"Péclet: {p:.3e}<br>"
         )
 
     def add_protein_row(self):
@@ -404,18 +421,25 @@ class MainWindow(QMainWindow):
             capillary_length=float(self.length_input.text()),
             flow_rate=float(self.flow_input.text())
         ))
+        r2_value = f"{result.r2}"
+        if result.r2 >= 0.95:
+            r2_colored = f'<span style = "color:green"> {r2_value}</span>'
+        elif 0.95>result.r2>=0.9 :
+            r2_colored = f'<span style = "color:orange"> {r2_value}</span>'
+        else:
+            r2_colored = f'<span style = "color:red"> {r2_value}</span>'
 
         self.update_info(
-            f"Protein {self.current_result_index + 1} / {len(self.analysis_results)}\n"
-            f"{self.protein_rows[self.current_result_index].proteinName.text()}\n"
-            f"m/z: {result.protein_mz} range {result.mz_window}\n"
-            f"Charge: {result.charge_state} range {result.charge_range}\n\n"
-            f"t_R: {result.tR:.2f} s\n"
-            f"σ: {result.sigma:.3e}\n"
-            f"R²: {result.r2: }\n"
-            f"R_h: {result.Rh:.3e} m\n"
-            f"D: {result.D:.3e} m²/s\n"
-            f"Tau: {result.t:.3f}\n"
+            f"Protein {self.current_result_index + 1} / {len(self.analysis_results)}<br>"
+            f"{self.protein_rows[self.current_result_index].proteinName.text()}<br>"
+            f"m/z: {result.protein_mz} range {result.mz_window}<br>"
+            f"Charge: {result.charge_state} range {result.charge_range}<br><br>"
+            f"t_R: {result.tR:.2f} s<br>"
+            f"σ: {result.sigma:.3e}<br>"
+            f"R²: {r2_colored} <br>"
+            f"R_h: {result.Rh:.3e} m<br>"
+            f"D: {result.D:.3e} m²/s<br>"
+            f"Tau: {result.t:.3f}<br>"
             f"Péclet: {result.p:.3e}"
         )
         self.prev_btn.setEnabled(self.current_result_index > 0)
@@ -495,7 +519,7 @@ class MainWindow(QMainWindow):
         """
         Update the info panel on the right side of the UI.
         """
-        self.info_box.setText(text)
+        self.info_box.setHtml(text)
 
     def export_pdf(self):
         if not self.analysis_results:
