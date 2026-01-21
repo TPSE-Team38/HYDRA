@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt,QThreadPool,Signal,QObject,QRunnable
 from PySide6.QtGui import QIcon,QPixmap
+
 from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as NavigationToolbar
 
 from .plot_widget import PlotWidget
@@ -241,6 +242,7 @@ class MainWindow(QMainWindow):
         result=self.analysis_results[self.current_result_index]
         self.update_info(
             f"Protein {self.current_result_index + 1} / {len(self.analysis_results)}\n"
+            f"{self.protein_rows[self.current_result_index].proteinName.text()}\n"
             f"m/z: {result.protein_mz} range {result.mz_window}\n"
             f"Charge: {result.charge_state} range {result.charge_range}\n\n"
             "Previous Fit:\n \n"
@@ -248,6 +250,7 @@ class MainWindow(QMainWindow):
             f"σ: {result.sigma:.3e}\n"
             f"R²: {result.r2: }\n"
             f"R_h: {result.Rh:.3e} m\n"
+            f"D {result.D:.3e} m²/s\n"
             f"Tau: {result.t:.3f}\n"
             f"Péclet: {result.p:.3e}\n \n"
             "Recalculated Fit:\n"
@@ -255,6 +258,7 @@ class MainWindow(QMainWindow):
             f"σ: {sigma:.3e}\n"
             f"R²: {r2:}\n"
             f"R_h: {R_h:.3e} m\n"
+            f"D {D:.3e} m²/s\n"
             f"Tau: {t:.3f}\n"
             f"Péclet: {p:.3e}\n"
         )
@@ -360,18 +364,20 @@ class MainWindow(QMainWindow):
             temperature=float(self.temp_input.text()),
             viscosity=float(self.viscosity_input.text()),
             capillary_radius=float(self.radius_input.text()),
-            capillary_length=float(self.radius_input.text()),
+            capillary_length=float(self.length_input.text()),
             flow_rate=float(self.flow_input.text())
         ))
 
         self.update_info(
             f"Protein {self.current_result_index + 1} / {len(self.analysis_results)}\n"
+            f"{self.protein_rows[self.current_result_index].proteinName.text()}\n"
             f"m/z: {result.protein_mz} range {result.mz_window}\n"
             f"Charge: {result.charge_state} range {result.charge_range}\n\n"
             f"t_R: {result.tR:.2f} s\n"
             f"σ: {result.sigma:.3e}\n"
             f"R²: {result.r2: }\n"
             f"R_h: {result.Rh:.3e} m\n"
+            f"D {result.D:.3e} m²/s\n"
             f"Tau: {result.t:.3f}\n"
             f"Péclet: {result.p:.3e}"
         )
@@ -413,8 +419,8 @@ class MainWindow(QMainWindow):
             return
 
         try:
-            t = tau(T, L, viscosity, Q, R_h)
-            p = peclet(R_h, T, viscosity, r_cap, Q)
+            t = tau(T, L, viscosity, Q, R_h*10**-9)
+            p = peclet(R_h*10**-9, T, viscosity, r_cap, Q)
         except Exception:
             self.tau_out.setText("Error")
             self.peclet_out.setText("Error")
@@ -527,7 +533,7 @@ class MainWindow(QMainWindow):
 
                     ax_plot.set_xlabel("Time (s)")
                     ax_plot.set_ylabel("Intensity")
-                    ax_plot.set_title(f"Protein {i}: m/z {result.protein_mz}")
+                    ax_plot.set_title(f"Protein {i}: {self.protein_rows[i-1].proteinName.text()} m/z {result.protein_mz} ",fontweight="bold")
                     ax_plot.grid(True)
                     ax_plot.legend(fontsize=9)
 
@@ -545,6 +551,7 @@ class MainWindow(QMainWindow):
 
                     summary = (
                         f"Protein {i} / {len(self.analysis_results)}\n"
+                        f"{self.protein_rows[i-1].proteinName.text()}\n"
                         f"m/z: {result.protein_mz} range {result.mz_window}\n"
                         f"Charge: {result.charge_state} range {result.charge_range}\n\n"
                         f"t_R: {result.tR:.2f} s\n"

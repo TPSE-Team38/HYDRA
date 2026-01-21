@@ -3,6 +3,7 @@ import numpy as np
 
 @dataclass
 class AnalysisConfig:
+
     ms1_path: str
     protein_mz: float
     mz_window: float

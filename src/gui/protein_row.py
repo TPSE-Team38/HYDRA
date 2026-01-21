@@ -7,6 +7,9 @@ class ProteinInputRow(QWidget):
 
         layout = QHBoxLayout(self)
 
+        self.proteinName = QLineEdit()
+        self.proteinName.setPlaceholderText("Name")
+
         self.mz = QLineEdit()
         self.mz.setPlaceholderText("Protein m/z")
 
@@ -22,7 +25,7 @@ class ProteinInputRow(QWidget):
         remove_btn = QPushButton("✕")
         remove_btn.setFixedWidth(28)
         remove_btn.clicked.connect(self.remove_self)
-
+        layout.addWidget(self.proteinName)
         layout.addWidget(self.mz)
         layout.addWidget(self.range)
         layout.addWidget(self.charge)
