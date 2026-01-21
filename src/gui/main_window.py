@@ -524,13 +524,34 @@ class MainWindow(QMainWindow):
             import matplotlib.pyplot as plt
             import numpy as np
 
+            temp = self.temp_input.text()
+            viscosity = self.viscosity_input.text()
+            radius = self.radius_input.text()
+            length = self.length_input.text()
+            flow = self.flow_input.text()
+
+            param_text = (
+                f"T: {temp} °C  |  η: {viscosity} kg·m⁻¹·s⁻¹  |  "
+                f"r: {radius} µm  |  L: {length} cm  |  Q: {flow} µL/min"
+            )
+
             with PdfPages(path) as pdf:
                 for i, result in enumerate(self.analysis_results, start=1):
                     fig = plt.figure(figsize=(8.5, 11))
-                    gs = fig.add_gridspec(2, 1, height_ratios=[3, 1])
+                    gs = fig.add_gridspec(3, 1, height_ratios=[0.5,3, 1])
+                    
+                    # ================= PARAMETERS HEADER =================
+                    ax_header = fig.add_subplot(gs[0])
+                    ax_header.axis("off")
+                    ax_header.text(
+                        0.5, 0.5, param_text,
+                        ha="center", va="center",
+                        fontsize=9,
+                        bbox=dict(boxstyle="round,pad=0.3", facecolor="#e0e0e0", edgecolor="gray")
+                    )
 
                     # ================= PLOT =================
-                    ax_plot = fig.add_subplot(gs[0])
+                    ax_plot = fig.add_subplot(gs[1])
 
                     ax_plot.set_xlim(1, result.seconds[-1])
                     ax_plot.set_ylim(
@@ -583,7 +604,7 @@ class MainWindow(QMainWindow):
                     )
 
                     # ================= TEXT =================
-                    ax_text = fig.add_subplot(gs[1])
+                    ax_text = fig.add_subplot(gs[2])
                     ax_text.axis("off")
 
                     summary = (
