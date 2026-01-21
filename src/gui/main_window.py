@@ -177,7 +177,16 @@ class MainWindow(QMainWindow):
 
         toolbar = NavigationToolbar(self.plot, self)
 
-        plot_layout.addWidget(QLabel("Results Plot"))
+        header_layout = QHBoxLayout()
+        header_layout.addWidget(QLabel("Results Plot"))
+
+        open_fullscreen_btn = QPushButton("View Plot in Full Screen")
+        open_fullscreen_btn.clicked.connect(self.open_plot_fullscreen)
+
+        header_layout.addStretch()
+        header_layout.addWidget(open_fullscreen_btn)
+
+        plot_layout.addLayout(header_layout)
         plot_layout.addWidget(toolbar)
         plot_layout.addWidget(self.plot)
 
@@ -235,6 +244,34 @@ class MainWindow(QMainWindow):
 
 
     # ================= ACTIONS =================
+    def open_plot_fullscreen(self):
+        if self.plot.stored_show_eic_args is None:
+            QMessageBox.warning(self, "No plot", "No plot available yet.")
+            return
+
+        self.plot_window = QMainWindow(self)
+        self.plot_window.setWindowTitle("Results Plot")
+        self.plot_window.setWindowIcon(self.icon)
+        self.plot_window.resize(1400, 900)
+
+        central = QWidget()
+        layout = QVBoxLayout(central)
+
+        # new PlotWidget (same class)
+        fullscreen_plot = PlotWidget()
+
+        toolbar = NavigationToolbar(fullscreen_plot, self.plot_window)
+
+        layout.addWidget(toolbar)
+        layout.addWidget(fullscreen_plot)
+
+        self.plot_window.setCentralWidget(central)
+
+        # redraw using same data
+        fullscreen_plot.show_eic(*self.plot.stored_show_eic_args)
+
+        self.plot_window.showMaximized()
+
     def reset_masking(self):
         self.show_current_result()
 
@@ -250,7 +287,7 @@ class MainWindow(QMainWindow):
             f"σ: {result.sigma:.3e}\n"
             f"R²: {result.r2: }\n"
             f"R_h: {result.Rh:.3e} m\n"
-            f"D {result.D:.3e} m²/s\n"
+            f"D: {result.D:.3e} m²/s\n"
             f"Tau: {result.t:.3f}\n"
             f"Péclet: {result.p:.3e}\n \n"
             "Recalculated Fit:\n"
@@ -258,7 +295,7 @@ class MainWindow(QMainWindow):
             f"σ: {sigma:.3e}\n"
             f"R²: {r2:}\n"
             f"R_h: {R_h:.3e} m\n"
-            f"D {D:.3e} m²/s\n"
+            f"D: {D:.3e} m²/s\n"
             f"Tau: {t:.3f}\n"
             f"Péclet: {p:.3e}\n"
         )
@@ -377,7 +414,7 @@ class MainWindow(QMainWindow):
             f"σ: {result.sigma:.3e}\n"
             f"R²: {result.r2: }\n"
             f"R_h: {result.Rh:.3e} m\n"
-            f"D {result.D:.3e} m²/s\n"
+            f"D: {result.D:.3e} m²/s\n"
             f"Tau: {result.t:.3f}\n"
             f"Péclet: {result.p:.3e}"
         )

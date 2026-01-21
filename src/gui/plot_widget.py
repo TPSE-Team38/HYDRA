@@ -23,6 +23,7 @@ class PlotWidget(FigureCanvasQTAgg):
         self.fig = Figure(figsize=(6, 4))
         self.ax = self.fig.add_subplot(111)
         self.curr_res=None
+        self.stored_show_eic_args = None
         super().__init__(self.fig)
 
     def show_eic(self, result, reset_btn,show_result,abort_remasking_btn,continue_remasking_btn,show_recalculated_fit, config= None):
@@ -54,7 +55,16 @@ class PlotWidget(FigureCanvasQTAgg):
 
         self.fig.tight_layout()
         self.draw()
-
+        # store everything needed to redraw
+        self.stored_show_eic_args = (
+            result,
+            reset_btn,
+            show_result,
+            abort_remasking_btn,
+            continue_remasking_btn,
+            show_recalculated_fit,
+            config
+        )
         #
         if config:
             params = [config.temperature, config.viscosity, config.capillary_radius, config.capillary_length, config.flow_rate, config.mz_window, config.charge_state, config.charge_range]
