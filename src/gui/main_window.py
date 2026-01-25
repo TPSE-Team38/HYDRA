@@ -515,9 +515,10 @@ class MainWindow(QMainWindow):
 
         if p > 70:
             self.peclet_out.setStyleSheet(GREEN_BOX)
-            self.peclet_out.setText(self.peclet_out.text()+"")
+            self.peclet_out.setText(self.peclet_out.text()+"✔️")
         else:
             self.peclet_out.setStyleSheet(RED_BOX)
+            self.peclet_out.setText(self.peclet_out.text()+"❌")
 
     def update_info(self, text: str):
         """
