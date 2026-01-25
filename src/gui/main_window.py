@@ -1,12 +1,13 @@
 from datetime import datetime
+from importlib import reload
 from pathlib import Path
 
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QLabel, QPushButton, QFileDialog,
     QVBoxLayout, QHBoxLayout, QGridLayout, QGroupBox,
-    QLineEdit, QSplitter, QTextEdit, QMessageBox, QScrollArea, QApplication,QSystemTrayIcon
+    QLineEdit, QSplitter, QTextEdit, QMessageBox, QScrollArea, QApplication, QSystemTrayIcon, QComboBox
 )
-from PySide6.QtCore import Qt,QThreadPool,Signal,QObject,QRunnable
+from PySide6.QtCore import Qt, QThreadPool, Signal, QObject, QRunnable, QSize
 from PySide6.QtGui import QIcon,QPixmap
 
 from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as NavigationToolbar
@@ -16,7 +17,7 @@ from .controller import AnalysisController
 from .protein_row import ProteinInputRow
 from src.models import AnalysisConfig
 from src.Calculations import tau, peclet
-
+import src.gui.accessibility_colors as accessibility_colors
 import os
 
 from ..parallization import LoadMS1Worker
@@ -40,7 +41,6 @@ class MainWindow(QMainWindow):
         self._build_ui()
 
     # ================= UI =================
-
     def _build_ui(self):
         central = QWidget()
         main_layout = QVBoxLayout(central)
@@ -58,11 +58,14 @@ class MainWindow(QMainWindow):
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title.setStyleSheet("font-size: 21px; font-weight: bold;")
 
+        self.accessibility_btn = QPushButton("Accessibility")
+        self.accessibility_btn.clicked.connect(self.open_accessibility_settings)
         top_bar.addWidget(self.load_btn)
         top_bar.addWidget(self.file_status)
         top_bar.addStretch()
         top_bar.addWidget(title)
         top_bar.addStretch()
+        top_bar.addWidget(self.accessibility_btn)
 
         main_layout.addLayout(top_bar)
 
@@ -244,6 +247,11 @@ class MainWindow(QMainWindow):
 
 
     # ================= ACTIONS =================
+    def open_accessibility_settings(self,checked):
+        self.accessibility_win=Accessibility_Window(self,accessibility_colors.current_mode)
+        self.accessibility_win.show()
+
+
     def open_plot_fullscreen(self):
         if self.plot.stored_show_eic_args is None:
             QMessageBox.warning(self, "No plot", "No plot available yet.")
@@ -280,19 +288,19 @@ class MainWindow(QMainWindow):
 
         r2_value = f"{result.r2}"
         if result.r2 >= 0.95:
-            r2_colored = f'<span style = "color:green"> {r2_value}</span>'
+            r2_colored = f'<span style = "color:{accessibility_colors.GreenBox_Border}"> {r2_value} ✔</span>'
         elif 0.95 > result.r2 >= 0.9:
-            r2_colored = f'<span style = "color:orange"> {r2_value}</span>'
+            r2_colored = f'<span style = "color:{accessibility_colors.YellowBox_Border}"> {r2_value} ⚠️</span>'
         else:
-            r2_colored = f'<span style = "color:red"> {r2_value}</span>'
+            r2_colored = f'<span style = "color:{accessibility_colors.RedBox_Border}"> {r2_value} ❌</span>'
 
         r2_value = f"{r2}"
-        if result.r2 >= 0.95:
-            r2_colored_remasked = f'<span style = "color:green"> {r2_value}</span>'
-        elif 0.95 > result.r2 >= 0.9:
-            r2_colored_remasked = f'<span style = "color:orange"> {r2_value}</span>'
+        if r2 >= 0.95:
+            r2_colored_remasked = f'<span style = "color:{accessibility_colors.GreenBox_Border}"> {r2_value} ✔</span>'
+        elif 0.95 > r2 >= 0.9:
+            r2_colored_remasked = f'<span style = "color:{accessibility_colors.YellowBox_Border}"> {r2_value} ⚠️</span>'
         else:
-            r2_colored_remasked = f'<span style = "color:red"> {r2_value}</span>'
+            r2_colored_remasked = f'<span style = "color:{accessibility_colors.RedBox_Border}"> {r2_value} ❌</span>'
 
         self.update_info(
             f"Protein {self.current_result_index + 1} / {len(self.analysis_results)}<br>"
@@ -347,7 +355,7 @@ class MainWindow(QMainWindow):
         self.file_status.setStyleSheet("color: green;")
 
     def on_ms1_error(self, msg):
-        self.file_status.setText("❌ Failed to load ms1")
+        self.file_status.setText("❌✔ Failed to load ms1")
         self.file_status.setStyleSheet("color: red;")
         self.load_btn.setEnabled(True)
         print(msg)
@@ -423,11 +431,11 @@ class MainWindow(QMainWindow):
         ))
         r2_value = f"{result.r2}"
         if result.r2 >= 0.95:
-            r2_colored = f'<span style = "color:green"> {r2_value}</span>'
-        elif 0.95>result.r2>=0.9 :
-            r2_colored = f'<span style = "color:orange"> {r2_value}</span>'
+            r2_colored = f'<span style = "color:{accessibility_colors.GreenBox_Border}"> {r2_value} ✔</span>'
+        elif 0.95 > result.r2 >= 0.9:
+            r2_colored = f'<span style = "color:{accessibility_colors.YellowBox_Border}"> {r2_value} ⚠️</span>'
         else:
-            r2_colored = f'<span style = "color:red"> {r2_value}</span>'
+            r2_colored = f'<span style = "color:{accessibility_colors.RedBox_Border}"> {r2_value} ❌</span>'
 
         self.update_info(
             f"Protein {self.current_result_index + 1} / {len(self.analysis_results)}<br>"
@@ -475,8 +483,8 @@ class MainWindow(QMainWindow):
             L = float(self.length_input.text())
             Q = float(self.flow_input.text())
         except ValueError:
-            self.tau_out.setText("Invalid input")
-            self.peclet_out.setText("Invalid input")
+            self.tau_out.setText("Invalid input ⚠️")
+            self.peclet_out.setText("Invalid input ⚠️")
             return
 
         try:
@@ -489,29 +497,25 @@ class MainWindow(QMainWindow):
 
         self.tau_out.setText(f"{t:.4g}")
         self.peclet_out.setText(f"{p:.4g}")
-        GREEN_BOX = """
-        QLineEdit {
-            background-color: #c6f6d5;
-            border: 2px solid #2e7d32;
-            color: black;
-            font-weight: bold;
-        }
-        """
-        RED_BOX = """
-        QLineEdit {
-            background-color: #fed7d7;
-            border: 2px solid #c62828;
-            color: black;
-            font-weight: bold;
-        }
-        """
+        GREEN_BOX = "QLineEdit {"f"background-color: {accessibility_colors.GreenBox};border: 2px solid {accessibility_colors.GreenBox_Border};""color: black;font-weight: bold;}"
+
+        Yellow_BOX = "QLineEdit {"f"background-color: {accessibility_colors.YellowBox};border: 2px solid {accessibility_colors.YellowBox_Border};color: black;""font-weight: bold;}"
+
+        RED_BOX = "QLineEdit {"f"background-color: {accessibility_colors.RedBox};border: 2px solid {accessibility_colors.RedBox_Border};""color: black;font-weight: bold;}"
+
         if t > 1.25:
+            self.tau_out.setText(self.tau_out.text()+"✔️")
             self.tau_out.setStyleSheet(GREEN_BOX)
+        elif t>0.37:
+            self.tau_out.setText(self.tau_out.text()+"⚠️")
+            self.tau_out.setStyleSheet(Yellow_BOX)
         else:
+            self.tau_out.setText(self.tau_out.text()+"❌")
             self.tau_out.setStyleSheet(RED_BOX)
 
         if p > 70:
             self.peclet_out.setStyleSheet(GREEN_BOX)
+            self.peclet_out.setText(self.peclet_out.text()+"")
         else:
             self.peclet_out.setStyleSheet(RED_BOX)
 
@@ -652,3 +656,21 @@ class MainWindow(QMainWindow):
         except Exception as e:
             QMessageBox.critical(self, "Export failed", str(e))
 
+
+class Accessibility_Window(QWidget):
+    def __init__(self,parent,mode):
+        super(Accessibility_Window,self).__init__(windowTitle="Accessibility",parent=parent)
+        self.setWindowFlag(Qt.WindowType.Window)
+        self.setWindowFlag(Qt.WindowType.MSWindowsFixedSizeDialogHint)
+        layout = QVBoxLayout()
+        self.title=QLabel("Accessibility Settings")
+        self.drop_down=QComboBox()
+        self.drop_down.addItems(["Normal","Deuteranomaly","Deuteranopia","Protanomaly","Protanopia","Tritanomaly","Tritanopia","Cone_Monochromacy","Achromatopsia"])
+        self.drop_down.setCurrentText(mode)
+        self.drop_down.currentIndexChanged.connect(self.on_change)
+        layout.addWidget(self.title)
+        layout.addWidget(self.drop_down)
+        self.setLayout(layout)
+
+    def on_change(self):
+        accessibility_colors.change_accessibility_color(self.drop_down.currentText())
