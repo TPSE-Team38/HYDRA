@@ -12,11 +12,12 @@ from PySide6.QtGui import QIcon,QPixmap
 
 from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as NavigationToolbar
 
+from .PlotFullscreenWindow import PlotFullscreenWindow
 from .plot_widget import PlotWidget
 from .controller import AnalysisController
 from .protein_row import ProteinInputRow
 from src.models import AnalysisConfig
-from src.Calculations import tau, peclet
+from src.Calculations import tau, peclet, get_z_vals
 import src.gui.accessibility_colors as accessibility_colors
 import os
 
@@ -26,6 +27,12 @@ from ..parallization import LoadMS1Worker
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
+        self.fullscreen_next_btn = None
+        self.fullscreen_prev_btn = None
+        self.plot_toolbar = None
+        self.accessibility_win = None
+        self.plot_window = None
+
         self.setWindowTitle("Catalyst 2.0")
         self.resize(1200, 800)
         self.reset_btn,self.abort_remasking_btn,self.continue_remasking_btn =None,None,None
@@ -37,6 +44,7 @@ class MainWindow(QMainWindow):
         self.current_result_index = 0  # which protein is shown
 
         self.plot = PlotWidget()
+
         self.controller = AnalysisController(self.plot, self)
         self._build_ui()
 
@@ -173,12 +181,12 @@ class MainWindow(QMainWindow):
 
         # ---------- Plot ----------
         plot_container = QWidget()
-        plot_layout = QVBoxLayout(plot_container)
+        self.plot_layout = QVBoxLayout(plot_container)
 
         # Remove margins so the plot fits snugly
-        plot_layout.setContentsMargins(0, 0, 0, 0)
+        self.plot_layout.setContentsMargins(0, 0, 0, 0)
 
-        toolbar = NavigationToolbar(self.plot, self)
+        self.plot_toolbar = NavigationToolbar(self.plot, self)
 
         header_layout = QHBoxLayout()
         header_layout.addWidget(QLabel("Results Plot"))
@@ -189,14 +197,11 @@ class MainWindow(QMainWindow):
         header_layout.addStretch()
         header_layout.addWidget(open_fullscreen_btn)
 
-        plot_layout.addLayout(header_layout)
-        plot_layout.addWidget(toolbar)
-        plot_layout.addWidget(self.plot)
+        self.plot_layout.addLayout(header_layout)
+        self.plot_layout.addWidget(self.plot_toolbar)
+        self.plot_layout.addWidget(self.plot)
 
         lower_splitter.addWidget(plot_container)
-
-        # main_splitter.setStretchFactor(0, 0)
-        # main_splitter.setStretchFactor(1, 1)
 
         # info box
         self.info_box = QTextEdit()
@@ -251,13 +256,35 @@ class MainWindow(QMainWindow):
         self.accessibility_win=Accessibility_Window(self,accessibility_colors.current_mode)
         self.accessibility_win.show()
 
+    def restore_plot_to_main(self):
+        self.plot.setParent(None)
+        self.plot_toolbar.setParent(None)
+
+
+        self.plot_layout.addWidget(self.plot_toolbar)
+        self.plot_layout.addWidget(self.plot)
+
+        self.show_current_result()
+        self.fullscreen_prev_btn = None
+        self.fullscreen_next_btn = None
+        self.fullscreen_reset_btn = None
 
     def open_plot_fullscreen(self):
         if self.plot.stored_show_eic_args is None:
             QMessageBox.warning(self, "No plot", "No plot available yet.")
             return
 
-        self.plot_window = QMainWindow(self)
+        # Detach from main window
+        self.plot.setParent(None)
+        self.plot_toolbar.setParent(None)
+
+        self.plot_window = PlotFullscreenWindow(
+            parent=self,
+            plot=self.plot,
+            toolbar=self.plot_toolbar,
+            on_close=self.restore_plot_to_main
+        )
+
         self.plot_window.setWindowTitle("Results Plot")
         self.plot_window.setWindowIcon(self.icon)
         self.plot_window.resize(1400, 900)
@@ -265,20 +292,41 @@ class MainWindow(QMainWindow):
         central = QWidget()
         layout = QVBoxLayout(central)
 
-        # new PlotWidget (same class)
-        fullscreen_plot = PlotWidget()
+        # Plot + toolbar
+        layout.addWidget(self.plot_toolbar)
+        layout.addWidget(self.plot)
 
-        toolbar = NavigationToolbar(fullscreen_plot, self.plot_window)
+        # ---- Bottom buttons ----
+        nav_layout = QHBoxLayout()
 
-        layout.addWidget(toolbar)
-        layout.addWidget(fullscreen_plot)
+        prev_btn = QPushButton("< Previous")
+        next_btn = QPushButton("Next >")
+        reset_btn = QPushButton("Reset Masking")
+        abort_btn = QPushButton("Abort Remasking Ø")
+        confirm_btn = QPushButton("Confirm Remasking ✓")
+
+        self.fullscreen_prev_btn = prev_btn
+        self.fullscreen_next_btn = next_btn
+
+
+        prev_btn.clicked.connect(self.show_previous)
+        next_btn.clicked.connect(self.show_next)
+        reset_btn.clicked.connect(self.reset_btn.click)
+        abort_btn.clicked.connect(self.abort_remasking_btn.click)
+        confirm_btn.clicked.connect(self.continue_remasking_btn.click)
+
+        nav_layout.addWidget(prev_btn)
+        nav_layout.addWidget(abort_btn)
+        nav_layout.addWidget(reset_btn)
+        nav_layout.addWidget(confirm_btn)
+        nav_layout.addWidget(next_btn)
+
+        layout.addLayout(nav_layout)
 
         self.plot_window.setCentralWidget(central)
-
-        # redraw using same data
-        fullscreen_plot.show_eic(*self.plot.stored_show_eic_args)
-
+        self.show_current_result()
         self.plot_window.showMaximized()
+
 
     def reset_masking(self):
         self.show_current_result()
@@ -302,11 +350,14 @@ class MainWindow(QMainWindow):
         else:
             r2_colored_remasked = f'<span style = "color:{accessibility_colors.RedBox_Border}"> {r2_value} ❌</span>'
 
+        z_vals = get_z_vals(result.charge_state, result.charge_range)
+        z_text = ", ".join(str(int(z)) for z in z_vals)
+
         self.update_info(
             f"Protein {self.current_result_index + 1} / {len(self.analysis_results)}<br>"
             f"{self.protein_rows[self.current_result_index].proteinName.text()}<br>"
             f"m/z: {result.protein_mz} range {result.mz_window}<br>"
-            f"Charge: {result.charge_state} range {result.charge_range}<br><br>"
+            f"Charge {result.charge_state} with range {result.charge_range} includes charges:<br>{z_text}<br><br>"
             "Previous Fit:<br> <br>"
             f"t_R: {result.tR:.2f} s<br>"
             f"σ: {result.sigma:.3e}<br>"
@@ -417,7 +468,17 @@ class MainWindow(QMainWindow):
             return
 
         result = self.analysis_results[self.current_result_index]
-        self.plot.show_eic(result,self.reset_btn,self.show_current_result,self.abort_remasking_btn,self.continue_remasking_btn,self.show_recalculated_fit,config=AnalysisConfig(
+
+        if  self.fullscreen_prev_btn:
+            self.fullscreen_prev_btn.setEnabled(self.current_result_index > 0)
+
+        if  self.fullscreen_next_btn:
+            self.fullscreen_next_btn.setEnabled(
+                self.current_result_index < len(self.analysis_results) - 1
+            )
+
+
+        self.plot.show_eic(result, self.reset_btn,self.show_current_result,self.abort_remasking_btn,self.continue_remasking_btn,self.show_recalculated_fit,config=AnalysisConfig(
             ms1_path=self.ms1_path,
             protein_mz=float(result.protein_mz),
             mz_window=float(result.mz_window),
@@ -437,11 +498,15 @@ class MainWindow(QMainWindow):
         else:
             r2_colored = f'<span style = "color:{accessibility_colors.RedBox_Border}"> {r2_value} ❌</span>'
 
+        z_vals = get_z_vals(result.charge_state, result.charge_range)
+        z_text = ", ".join(str(int(z)) for z in z_vals)
+
         self.update_info(
+
             f"Protein {self.current_result_index + 1} / {len(self.analysis_results)}<br>"
             f"{self.protein_rows[self.current_result_index].proteinName.text()}<br>"
             f"m/z: {result.protein_mz} range {result.mz_window}<br>"
-            f"Charge: {result.charge_state} range {result.charge_range}<br><br>"
+            f"Charge {result.charge_state} with range {result.charge_range} includes charges:<br>{z_text}<br><br>"
             f"t_R: {result.tR:.2f} s<br>"
             f"σ: {result.sigma:.3e}<br>"
             f"R²: {r2_colored} <br>"
@@ -568,7 +633,7 @@ class MainWindow(QMainWindow):
                 for i, result in enumerate(self.analysis_results, start=1):
                     fig = plt.figure(figsize=(8.5, 11))
                     gs = fig.add_gridspec(3, 1, height_ratios=[0.5,3, 1])
-                    
+
                     # ================= PARAMETERS HEADER =================
                     ax_header = fig.add_subplot(gs[0])
                     ax_header.axis("off")
