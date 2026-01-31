@@ -26,6 +26,10 @@ class PlotWidget(FigureCanvasQTAgg):
         self.stored_show_eic_args = None
         super().__init__(self.fig)
 
+    def is_masking_active(self):
+        # Example logic: return True if user has selected points but not confirmed/aborted
+        return getattr(self, "remasking_started", False)
+
     def show_eic(self, result, reset_btn,show_result,abort_remasking_btn,continue_remasking_btn,show_recalculated_fit, config= None):
         """
         result: object EICResult(seconds, final_intensities, removed_dip, removed_dip_fitted, r2, tR, sigma, D, Rh, t, p)
@@ -37,12 +41,12 @@ class PlotWidget(FigureCanvasQTAgg):
         self.ax.scatter(result.seconds, result.final_intensities, lw=1.5)
 
         # Masking
-        self.ax.scatter(result.seconds, result.removed_dip, label="EIC after Masking",color="orange")
-        self.ax.scatter(result.seconds, [v if v not in result.removed_dip else np.nan for v in result.final_intensities],color="red")
+        self.ax.scatter(result.seconds, result.removed_dip, label="EIC after Masking",color="#f34242")
+        self.ax.scatter(result.seconds, [v if v not in result.removed_dip else np.nan for v in result.final_intensities],color="#65bdf7")
 
         #Fitting
         self.ax.set_ylim(min(*result.removed_dip_fitted, *result.final_intensities), max(*result.removed_dip_fitted, *result.final_intensities))
-        self.ax.plot(result.seconds, result.removed_dip_fitted, '--',
+        self.ax.plot(result.seconds, result.removed_dip_fitted, '--',color="black",
                      label=f"Fitted EIC with R^2 value of {result.r2} ")
         #\n and R_h of {result.Rh}  \n D: {result.D} \n sigma: {result.sigma} \n tau: {result.t} \n peclet: {result.p}",color="blue")
 

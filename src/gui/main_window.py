@@ -1,17 +1,13 @@
+import os
 from datetime import datetime
-from importlib import reload
-from pathlib import Path
-
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QLabel, QPushButton, QFileDialog,
     QVBoxLayout, QHBoxLayout, QGridLayout, QGroupBox,
-    QLineEdit, QSplitter, QTextEdit, QMessageBox, QScrollArea, QApplication, QSystemTrayIcon, QComboBox
+    QLineEdit, QSplitter, QTextEdit, QMessageBox, QScrollArea, QApplication, QComboBox
 )
-from PySide6.QtCore import Qt, QThreadPool, Signal, QObject, QRunnable, QSize
-from PySide6.QtGui import QIcon,QPixmap
-
+from PySide6.QtCore import Qt, QThreadPool
+from PySide6.QtGui import QIcon
 from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as NavigationToolbar
-
 from .PlotFullscreenWindow import PlotFullscreenWindow
 from .plot_widget import PlotWidget
 from .controller import AnalysisController
@@ -19,7 +15,7 @@ from .protein_row import ProteinInputRow
 from src.models import AnalysisConfig
 from src.Calculations import tau, peclet, get_z_vals
 import src.gui.accessibility_colors as accessibility_colors
-import os
+
 
 from ..parallization import LoadMS1Worker
 
@@ -331,6 +327,7 @@ class MainWindow(QMainWindow):
     def reset_masking(self):
         self.show_current_result()
 
+
     def show_recalculated_fit(self,masked_y, fitted_y, r2, t_R, sigma, D, R_h, t, p):
         result=self.analysis_results[self.current_result_index]
 
@@ -342,13 +339,41 @@ class MainWindow(QMainWindow):
         else:
             r2_colored = f'<span style = "color:{accessibility_colors.RedBox_Border}"> {r2_value} ❌</span>'
 
-        r2_value = f"{r2}"
-        if r2 >= 0.95:
-            r2_colored_remasked = f'<span style = "color:{accessibility_colors.GreenBox_Border}"> {r2_value} ✔</span>'
-        elif 0.95 > r2 >= 0.9:
-            r2_colored_remasked = f'<span style = "color:{accessibility_colors.YellowBox_Border}"> {r2_value} ⚠️</span>'
+        tau_value = f"{result.t}"
+        if result.t >= 1.25:
+            tau_colored = f'<span style = "color:{accessibility_colors.GreenBox_Border}"> {tau_value} ✔</span>'
+        elif result.t > 0.37:
+            tau_colored = f'<span style = "color:{accessibility_colors.YellowBox_Border}"> {tau_value} ⚠️</span>'
         else:
-            r2_colored_remasked = f'<span style = "color:{accessibility_colors.RedBox_Border}"> {r2_value} ❌</span>'
+            tau_colored = f'<span style = "color:{accessibility_colors.RedBox_Border}"> {tau_value} ❌</span>'
+
+        peclet_value = f"{result.p}"
+        if result.p > 70:
+            peclet_colored = f'<span style = "color:{accessibility_colors.GreenBox_Border}"> {peclet_value} ✔</span>'
+        else:
+            peclet_colored = f'<span style = "color:{accessibility_colors.RedBox_Border}"> {peclet_value} ❌</span>'
+
+        r2_value_remasked = f"{r2}"
+        if r2 >= 0.95:
+            r2_colored_remasked = f'<span style = "color:{accessibility_colors.GreenBox_Border}"> {r2_value_remasked} ✔</span>'
+        elif 0.95 > r2 >= 0.9:
+            r2_colored_remasked = f'<span style = "color:{accessibility_colors.YellowBox_Border}"> {r2_value_remasked} ⚠️</span>'
+        else:
+            r2_colored_remasked = f'<span style = "color:{accessibility_colors.RedBox_Border}"> {r2_value_remasked} ❌</span>'
+
+        tau_value_remasked = f"{t}"
+        if t >= 1.25:
+            tau_colored_remasked = f'<span style = "color:{accessibility_colors.GreenBox_Border}"> {tau_value_remasked} ✔</span>'
+        elif t > 0.37:
+            tau_colored_remasked = f'<span style = "color:{accessibility_colors.YellowBox_Border}"> {tau_value_remasked} ⚠️</span>'
+        else:
+            tau_colored_remasked = f'<span style = "color:{accessibility_colors.RedBox_Border}"> {tau_value_remasked} ❌</span>'
+
+        peclet_value_remasked = f"{p}"
+        if p > 70:
+            peclet_colored_remasked = f'<span style = "color:{accessibility_colors.GreenBox_Border}"> {peclet_value_remasked} ✔</span>'
+        else:
+            peclet_colored_remasked = f'<span style = "color:{accessibility_colors.RedBox_Border}"> {peclet_value_remasked} ❌</span>'
 
         z_vals = get_z_vals(result.charge_state, result.charge_range)
         z_text = ", ".join(str(int(z)) for z in z_vals)
@@ -364,16 +389,16 @@ class MainWindow(QMainWindow):
             f"R²: {r2_colored}<br>"
             f"R_h: {result.Rh:.3e} m<br>"
             f"D: {result.D:.3e} m²/s<br>"
-            f"Tau: {result.t:.3f}<br>"
-            f"Péclet: {result.p:.3e}<br> <br>"
+            f"Tau: {tau_colored}<br>"
+            f"Péclet: {peclet_colored}<br> <br>"
             "Recalculated Fit:<br>"
             f"t_R: {t_R:.2f} s<br>"
             f"σ: {sigma:.3e}<br>"
             f"R²: {r2_colored_remasked}<br>"
             f"R_h: {R_h:.3e} m<br>"
             f"D: {D:.3e} m²/s<br>"
-            f"Tau: {t:.3f}<br>"
-            f"Péclet: {p:.3e}<br>"
+            f"Tau: {tau_colored_remasked}<br>"
+            f"Péclet: {peclet_colored_remasked}<br>"
         )
 
     def add_protein_row(self):
@@ -402,7 +427,8 @@ class MainWindow(QMainWindow):
     def on_ms1_loaded(self,path):
         self.ms1_path = path
         self.load_btn.setEnabled(True)
-        self.file_status.setText("✔ ms1 file loaded")
+        file_name = os.path.basename(path)
+        self.file_status.setText(f"✔ ms1 file loaded: {file_name}")
         self.file_status.setStyleSheet("color: green;")
 
     def on_ms1_error(self, msg):
@@ -490,6 +516,7 @@ class MainWindow(QMainWindow):
             capillary_length=float(self.length_input.text()),
             flow_rate=float(self.flow_input.text())
         ))
+
         r2_value = f"{result.r2}"
         if result.r2 >= 0.95:
             r2_colored = f'<span style = "color:{accessibility_colors.GreenBox_Border}"> {r2_value} ✔</span>'
@@ -497,6 +524,20 @@ class MainWindow(QMainWindow):
             r2_colored = f'<span style = "color:{accessibility_colors.YellowBox_Border}"> {r2_value} ⚠️</span>'
         else:
             r2_colored = f'<span style = "color:{accessibility_colors.RedBox_Border}"> {r2_value} ❌</span>'
+
+        tau_value = f"{result.t}"
+        if result.t >= 1.25:
+            tau_colored = f'<span style = "color:{accessibility_colors.GreenBox_Border}"> {tau_value} ✔</span>'
+        elif result.t > 0.37:
+            tau_colored = f'<span style = "color:{accessibility_colors.YellowBox_Border}"> {tau_value} ⚠️</span>'
+        else:
+            tau_colored = f'<span style = "color:{accessibility_colors.RedBox_Border}"> {tau_value} ❌</span>'
+
+        peclet_value = f"{result.p}"
+        if result.p > 70:
+            peclet_colored = f'<span style = "color:{accessibility_colors.GreenBox_Border}"> {peclet_value} ✔</span>'
+        else:
+            peclet_colored = f'<span style = "color:{accessibility_colors.RedBox_Border}"> {peclet_value} ❌</span>'
 
         z_vals = get_z_vals(result.charge_state, result.charge_range)
         z_text = ", ".join(str(int(z)) for z in z_vals)
@@ -512,8 +553,8 @@ class MainWindow(QMainWindow):
             f"R²: {r2_colored} <br>"
             f"R_h: {result.Rh:.3e} m<br>"
             f"D: {result.D:.3e} m²/s<br>"
-            f"Tau: {result.t:.3f}<br>"
-            f"Péclet: {result.p:.3e}"
+            f"Tau: {tau_colored}<br>"
+            f"Péclet: {peclet_colored}"
         )
         self.prev_btn.setEnabled(self.current_result_index > 0)
         self.next_btn.setEnabled(self.current_result_index < len(self.analysis_results) - 1)
@@ -623,8 +664,10 @@ class MainWindow(QMainWindow):
             radius = self.radius_input.text()
             length = self.length_input.text()
             flow = self.flow_input.text()
+            ms1_filename = os.path.basename(self.ms1_path)
 
             param_text = (
+                f"File: {ms1_filename}\n"
                 f"T: {temp} °C  |  η: {viscosity} kg·m⁻¹·s⁻¹  |  "
                 f"r: {radius} µm  |  L: {length} cm  |  Q: {flow} µL/min"
             )
@@ -710,6 +753,7 @@ class MainWindow(QMainWindow):
                         f"sigma: {result.sigma:.3e}\n"
                         f"R²: {result.r2:.3f}\n"
                         f"R_h: {result.Rh:.3e} m\n"
+                        f"D: {result.D}\n"
                         f"Tau: {result.t:.3f}\n"
                         f"Péclet: {result.p:.3e}"
                     )
