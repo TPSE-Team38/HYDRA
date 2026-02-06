@@ -23,8 +23,7 @@ from ..parallization import LoadMS1Worker
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.fullscreen_next_btn = None
-        self.fullscreen_prev_btn = None
+
         self.plot_toolbar = None
         self.accessibility_win = None
         self.plot_window = None
@@ -229,11 +228,13 @@ class MainWindow(QMainWindow):
 
         self.prev_btn.clicked.connect(self.show_previous)
         self.next_btn.clicked.connect(self.show_next)
+        self.prev_btn.setEnabled(False)
+        self.next_btn.setEnabled(False)
         self.continue_remasking_btn.setEnabled(False)
         self.abort_remasking_btn.setEnabled(False)
         # ---------- Reset Button ----------
         self.reset_btn = QPushButton("Reset Masking")
-        self.reset_btn.setEnabled(True)
+        self.reset_btn.setEnabled(False)
         nav_layout.addWidget(self.prev_btn)
         # nav_layout.addStretch()
         nav_layout.addWidget(self.abort_remasking_btn)
@@ -244,6 +245,8 @@ class MainWindow(QMainWindow):
         # nav_layout.addStretch(1)
         nav_layout.addWidget(self.next_btn)
 
+        self.navigation_layout = nav_layout
+
         main_layout.addLayout(nav_layout)
 
 
@@ -253,26 +256,58 @@ class MainWindow(QMainWindow):
         self.accessibility_win.show()
 
     def restore_plot_to_main(self):
+        # Detach from fullscreen
         self.plot.setParent(None)
         self.plot_toolbar.setParent(None)
 
+        self.prev_btn.setParent(None)
+        self.next_btn.setParent(None)
+        self.reset_btn.setParent(None)
+        self.abort_remasking_btn.setParent(None)
+        self.continue_remasking_btn.setParent(None)
 
+        # Restore plot
         self.plot_layout.addWidget(self.plot_toolbar)
         self.plot_layout.addWidget(self.plot)
 
+        # Restore buttons to main layout (adjust layout name if different)
+        self.navigation_layout.addWidget(self.prev_btn)
+        self.navigation_layout.addWidget(self.abort_remasking_btn)
+        self.navigation_layout.addWidget(self.reset_btn)
+        self.navigation_layout.addWidget(self.continue_remasking_btn)
+        self.navigation_layout.addWidget(self.next_btn)
+
         self.show_current_result()
-        self.fullscreen_prev_btn = None
-        self.fullscreen_next_btn = None
-        self.fullscreen_reset_btn = None
+
+
 
     def open_plot_fullscreen(self):
+
         if self.plot.stored_show_eic_args is None:
             QMessageBox.warning(self, "No plot", "No plot available yet.")
             return
 
+        if (
+                self.plot.curr_res is not None
+                and self.plot.curr_res.currently_remasking
+        ):
+            QMessageBox.warning(
+                self,
+                "Remasking in progress",
+                "Please confirm or abort remasking before opening fullscreen view."
+            )
+            return
+
+
         # Detach from main window
         self.plot.setParent(None)
         self.plot_toolbar.setParent(None)
+        # Detach buttons from main window
+        self.prev_btn.setParent(None)
+        self.next_btn.setParent(None)
+        self.reset_btn.setParent(None)
+        self.abort_remasking_btn.setParent(None)
+        self.continue_remasking_btn.setParent(None)
 
         self.plot_window = PlotFullscreenWindow(
             parent=self,
@@ -292,31 +327,13 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.plot_toolbar)
         layout.addWidget(self.plot)
 
-        # ---- Bottom buttons ----
+        # ---- reuse main window buttons ----
         nav_layout = QHBoxLayout()
-
-        prev_btn = QPushButton("< Previous")
-        next_btn = QPushButton("Next >")
-        reset_btn = QPushButton("Reset Masking")
-        abort_btn = QPushButton("Abort Remasking Ø")
-        confirm_btn = QPushButton("Confirm Remasking ✓")
-
-        self.fullscreen_prev_btn = prev_btn
-        self.fullscreen_next_btn = next_btn
-
-
-        prev_btn.clicked.connect(self.show_previous)
-        next_btn.clicked.connect(self.show_next)
-        reset_btn.clicked.connect(self.reset_btn.click)
-        abort_btn.clicked.connect(self.abort_remasking_btn.click)
-        confirm_btn.clicked.connect(self.continue_remasking_btn.click)
-
-        nav_layout.addWidget(prev_btn)
-        nav_layout.addWidget(abort_btn)
-        nav_layout.addWidget(reset_btn)
-        nav_layout.addWidget(confirm_btn)
-        nav_layout.addWidget(next_btn)
-
+        nav_layout.addWidget(self.prev_btn)
+        nav_layout.addWidget(self.abort_remasking_btn)
+        nav_layout.addWidget(self.reset_btn)
+        nav_layout.addWidget(self.continue_remasking_btn)
+        nav_layout.addWidget(self.next_btn)
         layout.addLayout(nav_layout)
 
         self.plot_window.setCentralWidget(central)
@@ -494,14 +511,6 @@ class MainWindow(QMainWindow):
             return
 
         result = self.analysis_results[self.current_result_index]
-
-        if  self.fullscreen_prev_btn:
-            self.fullscreen_prev_btn.setEnabled(self.current_result_index > 0)
-
-        if  self.fullscreen_next_btn:
-            self.fullscreen_next_btn.setEnabled(
-                self.current_result_index < len(self.analysis_results) - 1
-            )
 
 
         self.plot.show_eic(result, self.reset_btn,self.show_current_result,self.abort_remasking_btn,self.continue_remasking_btn,self.show_recalculated_fit,config=AnalysisConfig(
