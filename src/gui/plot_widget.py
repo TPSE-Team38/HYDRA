@@ -26,9 +26,6 @@ class PlotWidget(FigureCanvasQTAgg):
         self.stored_show_eic_args = None
         super().__init__(self.fig)
 
-    def is_masking_active(self):
-        # Example logic: return True if user has selected points but not confirmed/aborted
-        return getattr(self, "remasking_started", False)
 
     def show_eic(self, result, reset_btn,show_result,abort_remasking_btn,continue_remasking_btn,show_recalculated_fit, config= None):
         """
