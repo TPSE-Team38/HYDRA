@@ -21,6 +21,8 @@ from src.models import EICResult
 from .Fitting_and_masking import *
 from .plotting import ResultPlot
 from .Calculations import *
+from joblib import Parallel, delayed
+
 def load_ms1(path):
     """Read all MS1 spectra from a file into a list."""
     spectra = []
@@ -28,6 +30,16 @@ def load_ms1(path):
         for spect in ms1.read(f):
             spectra.append(spect)
     return spectra
+
+def load_ms1_parallel(path):
+    """Read all MS1 spectra from a file into a list, but Parallelized"""
+    reader = ms1.IndexedMS1(path)
+    def getspect(index):
+        return reader[index]
+    spectra = Parallel(n_jobs=-2)(delayed(getspect)(i) for i in range(len(reader)))
+    spectra.sort(key=lambda x: int(x["params"]["scan"][0]))
+    return spectra
+
 
 def is_in_region(spectrum, min_mz, max_mz):
     """ return true or false , if m/z inside region. select only m/z , that inside the region [min_mz, max_mz]"""

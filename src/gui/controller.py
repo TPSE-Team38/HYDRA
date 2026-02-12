@@ -1,4 +1,4 @@
-from src.EIC_extraction import load_ms1
+from src.EIC_extraction import load_ms1, load_ms1_parallel
 from src.pipeline import run_analysis
 
 class AnalysisController:
@@ -10,7 +10,7 @@ class AnalysisController:
 
     def load_ms1_once(self, path):
         if self.spectra is None or self.ms1_path != path:
-            self.spectra = load_ms1(path)
+            self.spectra = load_ms1_parallel(path)
             self.ms1_path = path
 
     def run(self, config,reset_btn,abort_remasking_btn,continue_remasking_btn,show_result, store=True):
