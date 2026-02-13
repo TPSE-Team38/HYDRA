@@ -6,3 +6,7 @@ venv/
 main.spec
 dist/
 build/
+main.dist/
+main.build/
+main.onefile-build/
+main.exe

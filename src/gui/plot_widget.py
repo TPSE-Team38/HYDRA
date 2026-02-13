@@ -69,4 +69,7 @@ class PlotWidget(FigureCanvasQTAgg):
         #
         if config:
             params = [config.temperature, config.viscosity, config.capillary_radius, config.capillary_length, config.flow_rate, config.mz_window, config.charge_state, config.charge_range]
+            if self.curr_res:
+                self.curr_res.clean_up()
+                self.curr_res = None
             self.curr_res=ResultPlot(result.final_intensities, result.seconds, params, self.fig, self.ax, recalculate,result,reset_btn,abort_remasking_btn,continue_remasking_btn,show_result,show_recalculated_fit)

@@ -45,9 +45,12 @@ class ResultPlot:
             return
         if len(self.new_points_plot)>2:
             try:
-                self.new_points_plot[0].remove()
                 self.new_points_plot[1].remove()
                 self.new_points_plot.pop()
+            except:
+                pass
+            try:
+                self.new_points_plot[0].remove()
                 self.new_points_plot.pop()
             except NotImplementedError:
                 pass
@@ -126,4 +129,36 @@ class ResultPlot:
         self.EIC_result.t=self.EIC_result.original_t
         self.EIC_result.p=self.EIC_result.original_p
         self.show_result()
-        return
+
+    def clean_up(self):
+        if self.cid:
+            self.fig.canvas.mpl_disconnect(self.cid)
+            self.cid=None
+        try:
+            self.reset_btn.clicked.disconnect(self.on_reset)
+        except:
+            pass
+
+        try:
+            self.abort_btn.clicked.disconnect(self.on_abort)
+        except:
+            pass
+
+        try:
+            self.continue_btn.clicked.disconnect(self.on_continue)
+        except:
+            pass
+
+        if self.recalculated_fit:
+            try:
+                self.recalculated_fit.remove()
+            except:
+                pass
+
+        for plot in self.new_points_plot:
+            try:
+                plot.remove()
+            except:
+                pass
+
+        self.new_points_plot.clear()

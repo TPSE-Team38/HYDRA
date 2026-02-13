@@ -1,3 +1,4 @@
+import os
 import random
 
 import scipy.optimize
@@ -16,13 +17,14 @@ from scipy.optimize import curve_fit,least_squares
 import lmfit
 from scipy.signal import find_peaks
 from sklearn.metrics import r2_score
-
 from src.models import EICResult
 from .Fitting_and_masking import *
 from .plotting import ResultPlot
 from .Calculations import *
 from joblib import Parallel, delayed
-
+import multiprocessing
+from PySide6.QtCore import QThreadPool
+from tqdm.contrib.concurrent import thread_map
 def load_ms1(path):
     """Read all MS1 spectra from a file into a list."""
     spectra = []
@@ -31,12 +33,15 @@ def load_ms1(path):
             spectra.append(spect)
     return spectra
 
+def getspect(index,reader):
+    return reader[index]
+
 def load_ms1_parallel(path):
     """Read all MS1 spectra from a file into a list, but Parallelized"""
+    os.environ['LOKY_MAX_CPU_COUNT'] = str(multiprocessing.cpu_count())
     reader = ms1.IndexedMS1(path)
-    def getspect(index):
-        return reader[index]
-    spectra = Parallel(n_jobs=-2)(delayed(getspect)(i) for i in range(len(reader)))
+    # spectra=thread_map(getspect, (range(len(reader))),max_workers=16)
+    spectra = Parallel(n_jobs=-2,backend="loky",timeout=None)(delayed(getspect)(i,reader) for i in range(len(reader)))
     spectra.sort(key=lambda x: int(x["params"]["scan"][0]))
     return spectra
 
