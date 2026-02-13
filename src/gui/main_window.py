@@ -410,7 +410,7 @@ class MainWindow(QMainWindow):
             f"Péclet: {peclet_colored}<br> <br>"
             "Recalculated Fit:<br>"
             f"t_R: {t_R:.2f} s<br>"
-            f"σ: {sigma:.3e}<br>"
+            f"σ: {sigma:.3e} s<br>"
             f"R²: {r2_colored_remasked}<br>"
             f"R_h: {R_h:.3e} m<br>"
             f"D: {D:.3e} m²/s<br>"
@@ -445,7 +445,7 @@ class MainWindow(QMainWindow):
         self.ms1_path = path
         self.load_btn.setEnabled(True)
         file_name = os.path.basename(path)
-        self.file_status.setText(f"✔ ms1 file loaded: {file_name}")
+        self.file_status.setText(f"✔ ms1 file loaded: {self.ms1_path}")
         self.file_status.setStyleSheet("color: green;")
 
     def on_ms1_error(self, msg):
@@ -558,7 +558,7 @@ class MainWindow(QMainWindow):
             f"m/z: {result.protein_mz} range {result.mz_window}<br>"
             f"Charge {result.charge_state} with range {result.charge_range} includes charges:<br>{z_text}<br><br>"
             f"t_R: {result.tR:.2f} s<br>"
-            f"σ: {result.sigma:.3e}<br>"
+            f"σ: {result.sigma:.3e} s<br>"
             f"R²: {r2_colored} <br>"
             f"R_h: {result.Rh:.3e} m<br>"
             f"D: {result.D:.3e} m²/s<br>"
@@ -673,10 +673,10 @@ class MainWindow(QMainWindow):
             radius = self.radius_input.text()
             length = self.length_input.text()
             flow = self.flow_input.text()
-            ms1_filename = os.path.basename(self.ms1_path)
+            #ms1_filename = os.path.basename(self.ms1_path)
 
             param_text = (
-                f"File: {ms1_filename}\n"
+                f"File: {self.ms1_path}\n"
                 f"T: {temp} °C  |  η: {viscosity} kg·m⁻¹·s⁻¹  |  "
                 f"r: {radius} µm  |  L: {length} cm  |  Q: {flow} µL/min"
             )
@@ -759,10 +759,10 @@ class MainWindow(QMainWindow):
                         f"m/z: {result.protein_mz} range {result.mz_window}\n"
                         f"Charge: {result.charge_state} range {result.charge_range}\n\n"
                         f"t_R: {result.tR:.2f} s\n"
-                        f"sigma: {result.sigma:.3e}\n"
+                        f"sigma: {result.sigma:.3e} s\n"
                         f"R²: {result.r2:.3f}\n"
                         f"R_h: {result.Rh:.3e} m\n"
-                        f"D: {result.D}\n"
+                        f"D: {result.D} m²/s\n"
                         f"Tau: {result.t:.3f}\n"
                         f"Péclet: {result.p:.3e}"
                     )
