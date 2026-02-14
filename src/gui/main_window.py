@@ -43,8 +43,8 @@ class MainWindow(QMainWindow):
 
         self.controller = AnalysisController(self.plot, self)
         self._build_ui()
-        self.info_box.setMouseTracking(True)
-        self.info_box.highlighted.connect(self.show_tooltip_browser)
+        self.info_box.setOpenLinks(False)  # Prevents clicking from doing anything
+        self.info_box.highlighted.connect(self.show_definition_tooltip)
     # ================= UI =================
     def _build_ui(self):
         central = QWidget()
@@ -251,12 +251,15 @@ class MainWindow(QMainWindow):
 
         main_layout.addLayout(nav_layout)
 
-    def show_tooltip_browser(self, qurl):
-        # QTextBrowser sends a QUrl object, so we convert it to string
-        text = qurl.toString()
-        if text:
-            QToolTip.showText(QCursor.pos(), text)
+    def show_definition_tooltip(self, qurl):
+        """Catches the hover over 'Tau' and shows the definition."""
+        definition_text = qurl.toString()
+
+        if definition_text:
+            # Show the popup at the mouse cursor
+            QToolTip.showText(QCursor.pos(), definition_text)
         else:
+            # Hide it when moving the mouse away
             QToolTip.hideText()
 
     # ================= ACTIONS =================
@@ -404,6 +407,10 @@ class MainWindow(QMainWindow):
         z_vals = get_z_vals(result.charge_state, result.charge_range)
         z_text = ", ".join(str(int(z)) for z in z_vals)
 
+        tau_definition = f"Tau is the time it takes for the protein to reach 95% of its maximum fluorescence intensity"
+        peclet_definition = f"Péclet number is the ratio of the protein's diffusion coefficient to the flow rate"
+        plain_text_style = "text-decoration: none; color: inherit;"
+
         self.update_info(
             f"Protein {self.current_result_index + 1} / {len(self.analysis_results)}<br>"
             f"{self.protein_rows[self.current_result_index].proteinName.text()}<br>"
@@ -413,18 +420,18 @@ class MainWindow(QMainWindow):
             f"t_R: {result.tR:.2f} s<br>"
             f"σ: {result.sigma:.3e}<br>"
             f"R²: {r2_colored}<br>"
-            f"R_h: {result.Rh:.3e} m<br>"
+            f"<b>R_h: {result.Rh:.3e} m </b><br>"
             f"D: {result.D:.3e} m²/s<br>"
-            f"Tau: {tau_colored}<br>"
-            f"Péclet: {peclet_colored}<br> <br>"
+            f"<a href='{tau_definition}' style='{plain_text_style}'>Tau</a>: {tau_colored}<br>"
+            f"<a href='{peclet_definition}' style='{plain_text_style}'>Péclet</a>: {peclet_colored}<br> <br>"
             "Recalculated Fit:<br>"
             f"t_R: {t_R:.2f} s<br>"
             f"σ: {sigma:.3e} s<br>"
             f"R²: {r2_colored_remasked}<br>"
-            f"R_h: {R_h:.3e} m<br>"
+            f"<b>R_h: {R_h:.3e} m</b><br>"
             f"D: {D:.3e} m²/s<br>"
-            f"Tau: {tau_colored_remasked}<br>"
-            f"Péclet: {peclet_colored_remasked}<br>"
+            f"<a href='{tau_definition}' style='{plain_text_style}'>Tau</a>: {tau_colored_remasked}<br>"
+            f"<a href='{peclet_definition}' style='{plain_text_style}'>Péclet</a>: {peclet_colored_remasked}<br>"
         )
 
     def add_protein_row(self):
@@ -561,7 +568,10 @@ class MainWindow(QMainWindow):
 
         z_vals = get_z_vals(result.charge_state, result.charge_range)
         z_text = ", ".join(str(int(z)) for z in z_vals)
-        i_style = "text-decoration: none; color: #007bff; font-weight: bold;"
+
+        tau_definition = f"Tau is the time it takes for the protein to reach 95% of its maximum fluorescence intensity"
+        peclet_definition = f"Péclet number is the ratio of the protein's diffusion coefficient to the flow rate"
+        plain_text_style = "text-decoration: none; color: inherit;"
         self.update_info(
 
             f"Protein {self.current_result_index + 1} / {len(self.analysis_results)}<br>"
@@ -571,11 +581,10 @@ class MainWindow(QMainWindow):
             f"t_R: {result.tR:.2f} s<br>"
             f"σ: {result.sigma:.3e} s<br>"
             f"R²: {r2_colored} <br>"
-            f"R_h: {result.Rh:.3e} m<br>"
+            f"<b>R_h: {result.Rh:.3e} m</b><br>"
             f"D: {result.D:.3e} m²/s<br>"
-            f"Tau: {tau_colored} " 
-            f"<a href='Tau Parameter: .... we are waiting of AG'style='{i_style}'>(i)</a><br>"
-            f"Péclet: {peclet_colored}"
+            f"<a href='{tau_definition}' style='{plain_text_style}'>Tau</a>: {tau_colored}<br>"
+            f"<a href='{peclet_definition}' style='{plain_text_style}'>Péclet</a>: {peclet_colored}<br>"
         )
         self.prev_btn.setEnabled(self.current_result_index > 0)
         self.next_btn.setEnabled(self.current_result_index < len(self.analysis_results) - 1)
