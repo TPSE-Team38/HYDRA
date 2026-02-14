@@ -630,15 +630,40 @@ class MainWindow(QMainWindow):
 
         RED_BOX = "QLineEdit {"f"background-color: {accessibility_colors.RedBox};border: 2px solid {accessibility_colors.RedBox_Border};""color: black;font-weight: bold;}"
 
+        from scipy.constants import k as boltzmann_c
+        import math
+
+        T_in_kelvin = T + 273.15
+        L_in_meter = L * (10**-2)
+        R_h_in_meter = R_h * (10**-9)
+        radius_in_meter = r_cap * (10 ** -6)
+        tau_threshold = 1.25
+        Q_max_for_tau_m3s = (boltzmann_c * T_in_kelvin * L_in_meter) / (6 * viscosity * R_h_in_meter * tau_threshold)
+        Q_max_for_tau_ulmin = (Q_max_for_tau_m3s * 1e9) * 60
+        suggested_flow_rate_for_tau = math.floor(Q_max_for_tau_ulmin)
+
+        peclet_threshold = 70
+        Q_min_for_peclet_m3s = (peclet_threshold * boltzmann_c * T_in_kelvin * radius_in_meter) / (6 * viscosity * R_h_in_meter)
+        Q_min_for_peclet_ulmin = (Q_min_for_peclet_m3s * 1e9) * 60
+        suggested_flow_rate_for_peclet = math.ceil(Q_min_for_peclet_ulmin)
+
         if t > 1.25:
             self.tau_out.setText(self.tau_out.text()+"✔️")
             self.tau_out.setStyleSheet(GREEN_BOX)
         elif t>0.37:
             self.tau_out.setText(self.tau_out.text()+"⚠️")
             self.tau_out.setStyleSheet(Yellow_BOX)
+            self.tau_out.setToolTip(
+                f"Tau is below 1.25. Consider reducing the flow rate.\n"
+                f"Suggested flow rate: ≤ {suggested_flow_rate_for_tau} µL/min to achieve τ ≥ 1.25."
+            )
         else:
             self.tau_out.setText(self.tau_out.text()+"❌")
             self.tau_out.setStyleSheet(RED_BOX)
+            self.tau_out.setToolTip(
+                f"Tau is below 0.37. Reduce the flow rate significantly.\n"
+                f"Suggested flow rate: ≤ {suggested_flow_rate_for_tau} µL/min to achieve τ ≥ 1.25."
+            )
 
         if p > 70:
             self.peclet_out.setStyleSheet(GREEN_BOX)
@@ -646,6 +671,10 @@ class MainWindow(QMainWindow):
         else:
             self.peclet_out.setStyleSheet(RED_BOX)
             self.peclet_out.setText(self.peclet_out.text()+"❌")
+            self.peclet_out.setToolTip(
+                f"Péclet is below 70. Consider increasing the flow rate.\n"
+                f"Suggested flow rate: ≥ {suggested_flow_rate_for_peclet} µL/min to achieve Péclet > 70."
+            )
 
     def update_info(self, text: str):
         """
