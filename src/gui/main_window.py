@@ -3,7 +3,7 @@ from datetime import datetime
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QLabel, QPushButton, QFileDialog,
     QVBoxLayout, QHBoxLayout, QGridLayout, QGroupBox,
-    QLineEdit, QSplitter, QTextEdit, QMessageBox, QScrollArea, QApplication, QComboBox
+    QLineEdit, QSplitter, QTextEdit, QMessageBox, QScrollArea, QApplication, QComboBox, QTextBrowser
 )
 from PySide6.QtCore import Qt, QThreadPool
 from PySide6.QtGui import QIcon
@@ -15,7 +15,8 @@ from .protein_row import ProteinInputRow
 from src.models import AnalysisConfig
 from src.Calculations import tau, peclet, get_z_vals
 import src.gui.accessibility_colors as accessibility_colors
-
+from PySide6.QtWidgets import QLabel, QToolTip
+from PySide6.QtGui import QCursor
 
 from ..parallization import LoadMS1Worker
 
@@ -42,7 +43,8 @@ class MainWindow(QMainWindow):
 
         self.controller = AnalysisController(self.plot, self)
         self._build_ui()
-
+        self.info_box.setMouseTracking(True)
+        self.info_box.highlighted.connect(self.show_tooltip_browser)
     # ================= UI =================
     def _build_ui(self):
         central = QWidget()
@@ -199,7 +201,7 @@ class MainWindow(QMainWindow):
         lower_splitter.addWidget(plot_container)
 
         # info box
-        self.info_box = QTextEdit()
+        self.info_box = QTextBrowser()
         self.info_box.setReadOnly(True)
         self.info_box.setMinimumWidth(250)
         self.info_box.setMaximumWidth(400)
@@ -249,6 +251,13 @@ class MainWindow(QMainWindow):
 
         main_layout.addLayout(nav_layout)
 
+    def show_tooltip_browser(self, qurl):
+        # QTextBrowser sends a QUrl object, so we convert it to string
+        text = qurl.toString()
+        if text:
+            QToolTip.showText(QCursor.pos(), text)
+        else:
+            QToolTip.hideText()
 
     # ================= ACTIONS =================
     def open_accessibility_settings(self,checked):
@@ -481,6 +490,7 @@ class MainWindow(QMainWindow):
             for i, row in enumerate(valid_rows, start=1):
                 config = AnalysisConfig(
                     ms1_path=self.ms1_path,
+                    protein_name=row.proteinName.text(),
                     protein_mz=float(row.mz.text()),
                     mz_window=float(row.range.text()),
                     charge_state=int(row.charge.text()),
@@ -515,6 +525,7 @@ class MainWindow(QMainWindow):
 
         self.plot.show_eic(result, self.reset_btn,self.show_current_result,self.abort_remasking_btn,self.continue_remasking_btn,self.show_recalculated_fit,config=AnalysisConfig(
             ms1_path=self.ms1_path,
+            protein_name=result.protein_name,
             protein_mz=float(result.protein_mz),
             mz_window=float(result.mz_window),
             charge_state=int(result.charge_state),
@@ -550,7 +561,7 @@ class MainWindow(QMainWindow):
 
         z_vals = get_z_vals(result.charge_state, result.charge_range)
         z_text = ", ".join(str(int(z)) for z in z_vals)
-
+        i_style = "text-decoration: none; color: #007bff; font-weight: bold;"
         self.update_info(
 
             f"Protein {self.current_result_index + 1} / {len(self.analysis_results)}<br>"
@@ -562,7 +573,8 @@ class MainWindow(QMainWindow):
             f"R²: {r2_colored} <br>"
             f"R_h: {result.Rh:.3e} m<br>"
             f"D: {result.D:.3e} m²/s<br>"
-            f"Tau: {tau_colored}<br>"
+            f"Tau: {tau_colored} " 
+            f"<a href='Tau Parameter: .... we are waiting of AG'style='{i_style}'>(i)</a><br>"
             f"Péclet: {peclet_colored}"
         )
         self.prev_btn.setEnabled(self.current_result_index > 0)
@@ -732,7 +744,7 @@ class MainWindow(QMainWindow):
                         "--",
                         linewidth=2,
                         color="blue",
-                        label=f"Fit (R²={result.r2:.3f})"
+                        label=f"Fit (R²={result.r2:.3f}) \nR_h = {(result.Rh * 10**9):.3f} nm "
                     )
 
                     ax_plot.set_xlabel("Time (s)")

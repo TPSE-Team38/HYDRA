@@ -5,6 +5,7 @@ import numpy as np
 class AnalysisConfig:
 
     ms1_path: str
+    protein_name: str
     protein_mz: float
     mz_window: float
     charge_state: int
@@ -22,6 +23,7 @@ class EICResult:
     # change indicator
     changed:bool
     # metadata
+    protein_name: str
     protein_mz: float
     mz_window: float
     charge_state: int

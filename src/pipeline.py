@@ -30,6 +30,7 @@ def run_analysis(spectra,config):
 
     return EICResult(
         False,
+        config.protein_name,
         config.protein_mz,
         config.mz_window,
         config.charge_state,

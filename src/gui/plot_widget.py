@@ -44,12 +44,12 @@ class PlotWidget(FigureCanvasQTAgg):
         #Fitting
         self.ax.set_ylim(min(*result.removed_dip_fitted, *result.final_intensities), max(*result.removed_dip_fitted, *result.final_intensities))
         self.ax.plot(result.seconds, result.removed_dip_fitted, '--',color="black",
-                     label=f"Fitted EIC with R^2 value of {result.r2} ")
+                     label=f"Fitted EIC with R^2 value of {result.r2} \n and R_h of {(result.Rh * 10**9):.3f} nm ")
         #\n and R_h of {result.Rh}  \n D: {result.D} \n sigma: {result.sigma} \n tau: {result.t} \n peclet: {result.p}",color="blue")
 
         self.ax.set_xlabel("Time (s)")
         self.ax.set_ylabel("Intensity")
-        self.ax.set_title("Extracted Ion Chromatogram")
+        self.ax.set_title(f"Extracted Ion Chromatogram: {result.protein_name} {result.protein_mz} m/z range {result.mz_window}")
         self.ax.grid(True)
 
         self.ax.legend(loc='best', fontsize=8)
