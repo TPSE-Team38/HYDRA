@@ -16,7 +16,7 @@ from src.models import AnalysisConfig
 from src.Calculations import tau, peclet, get_z_vals
 import src.gui.accessibility_colors as accessibility_colors
 from PySide6.QtWidgets import QLabel, QToolTip
-from PySide6.QtGui import QCursor
+from PySide6.QtGui import QCursor,QBitmap
 
 from ..parallization import LoadMS1Worker
 
@@ -29,10 +29,10 @@ class MainWindow(QMainWindow):
         self.accessibility_win = None
         self.plot_window = None
 
-        self.setWindowTitle("Catalyst 2.0")
+        self.setWindowTitle("HYDRA")
         self.resize(1200, 800)
         self.reset_btn,self.abort_remasking_btn,self.continue_remasking_btn =None,None,None
-        self.icon=QIcon("./assets/catalyst.ico")
+        self.icon=QIcon("./assets/HYDRA-logo.png")
         self.setWindowIcon(self.icon)
         self.ms1_path = None
         self.protein_rows = []
@@ -59,7 +59,7 @@ class MainWindow(QMainWindow):
         self.file_status = QLabel("No ms1 file loaded")
         self.file_status.setStyleSheet("color: red;")
 
-        title = QLabel("CATALYST 2.0")
+        title = QLabel("HYDRA")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title.setStyleSheet("font-size: 21px; font-weight: bold;")
 
