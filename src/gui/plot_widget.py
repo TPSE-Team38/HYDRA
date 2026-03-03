@@ -9,7 +9,7 @@ from matplotlib.backends.backend_qtagg import (
 
 import src
 from src.plotting import ResultPlot
-from src.EIC_extraction import recalculate,results
+from src.EIC_extraction import recalculate
 import numpy as np
 from src.models import AnalysisConfig
 from src.pipeline import run_analysis

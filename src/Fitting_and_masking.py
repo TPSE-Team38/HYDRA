@@ -221,6 +221,7 @@ def get_2_peaks(y:np.ndarray[float],y_nonsmoothed)->np.ndarray[float]:
 ################################################################
 '''fitting'''
 ##-----------------------------##
+#different_approach_gaus_jonathan
 def different_approach_gaus_jonathan(y:np.ndarray[float],x:np.ndarray[float],xc):
     """
     fits the curve of the tails created by ion suppression removal
@@ -230,7 +231,7 @@ def different_approach_gaus_jonathan(y:np.ndarray[float],x:np.ndarray[float],xc)
     y_fit=y[mask]
     # p0 = [min(y_fit), xc,2.355*(np.std(y_fit)), (y_fit.max() - y_fit.min())]
     params,_=curve_fit(new_gauss_from_jonathan,x_fit,y_fit,maxfev=10000)
-    return new_gauss_from_jonathan(x,*params),params[2]
+    return new_gauss_from_jonathan(x,*params),(params[2]/2)
 
 def gaussian_fit(y:np.ndarray[float],x:np.ndarray[float],xc):
     """

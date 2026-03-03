@@ -1,30 +1,13 @@
 import os
-import random
 
-import scipy.optimize
-from fontTools.subset import intersect
-from numpy.ma.core import left_shift, masked
 from pyteomics import ms1
-import numpy as np
-import matplotlib.pyplot as plt
-import scipy.interpolate as interpolate
-import scipy.stats as stats
-import scipy.signal as sig
-import scipy.optimize as opt
-import argparse
-import pathlib
-from scipy.optimize import curve_fit,least_squares
-import lmfit
-from scipy.signal import find_peaks
 from sklearn.metrics import r2_score
-from src.models import EICResult
 from .Fitting_and_masking import *
-from .plotting import ResultPlot
 from .Calculations import *
 from joblib import Parallel, delayed
 import multiprocessing
-from PySide6.QtCore import QThreadPool
-from tqdm.contrib.concurrent import thread_map
+
+
 def load_ms1(path):
     """Read all MS1 spectra from a file into a list."""
     spectra = []
@@ -33,6 +16,7 @@ def load_ms1(path):
             spectra.append(spect)
     return spectra
 
+
 def getspect(index,reader):
     return reader[index]
 
@@ -40,7 +24,6 @@ def load_ms1_parallel(path):
     """Read all MS1 spectra from a file into a list, but Parallelized"""
     os.environ['LOKY_MAX_CPU_COUNT'] = str(multiprocessing.cpu_count())
     reader = ms1.IndexedMS1(path)
-    # spectra=thread_map(getspect, (range(len(reader))),max_workers=16)
     spectra = Parallel(n_jobs=-2,backend="loky",timeout=None)(delayed(getspect)(i,reader) for i in range(len(reader)))
     spectra.sort(key=lambda x: int(x["params"]["scan"][0]))
     return spectra
@@ -51,11 +34,13 @@ def is_in_region(spectrum, min_mz, max_mz):
     mz_array = spectrum['m/z array']
     return (mz_array>= min_mz) & (mz_array <= max_mz)
 
+
 def get_intensities_of_region(spectrum, min_mz, max_mz):
     """Return all intensities of only m/z , that inside the region [min_mz, max_mz]."""
     intensity_array = spectrum["intensity array"]
     mask = is_in_region(spectrum, min_mz, max_mz)
     return intensity_array[mask]
+
 
 def get_final_eic_intensities(spectra, protein_mz, protein_sampling_range)->np.ndarray:
     """Return final intensities array of our EIC by summing intensity in the m/z window for each spectrum."""
@@ -76,6 +61,7 @@ def get_final_eic_intensities(spectra, protein_mz, protein_sampling_range)->np.n
 
     return np.array(final_intensities)
 
+
 def get_all_intensity(spectra,protein_mz,protein_sampling_range,original_charge_state,charge_list):
     """sums intensities for each second including only m/z extracted using charge_list"""
     final_intensities_arr=[]
@@ -91,18 +77,34 @@ def get_all_intensity(spectra,protein_mz,protein_sampling_range,original_charge_
 
     return final_intensities
 
+
 def recalculate(peaks,y,x,params:np.ndarray[float]):
-    masked_y=np.concatenate((y[:peaks[0][0]],[np.nan]*(peaks[1][0]-peaks[0][0]),y[peaks[1][0]:]))
-    mask=~np.isnan(masked_y)
-    fitted,sigma=gaussian_fit(masked_y,x,x[-1]/2)
-    r2 = r2_score(masked_y[mask], fitted[mask])
-    t_R = np.argmax(fitted) + 1
+    #calculate new masking based on the two points in peaks
+    removed_dip=np.concatenate((y[:peaks[0][0]],[np.nan]*(peaks[1][0]-peaks[0][0]),y[peaks[1][0]:]))
+
+    mask=~np.isnan(removed_dip)
+    removed_dip_fitted,sigma=gaussian_fit(removed_dip,x,x[-1]/2)
+    r2 = r2_score(removed_dip[mask], removed_dip_fitted[mask])
+
+    # refitting with different gaussian if r2 bad
+    if r2 < 0.9:
+        temp_fit, temp_sigma = different_approach_gaus_jonathan(removed_dip, x, x[-1]/2)
+        temp_r2 = r2_score(removed_dip[mask], temp_fit[mask])
+        if temp_r2 > r2:
+            r2 = temp_r2
+            removed_dip_fitted = temp_fit
+            sigma = temp_sigma
+
+    t_R = np.argmax(removed_dip_fitted) + 1
     D = diffusion_coefficient(float(params[2]), sigma, t_R)
     R_h = hydrodynamic_radius(float(params[0]), float(params[1]), D)
     t=tau(params[0],params[3],params[1],params[4],R_h)
     p=peclet(R_h,params[0],params[1],params[2],params[4])
-    return masked_y,fitted,r2,t_R,sigma,D,R_h,t,p
 
+    return removed_dip,removed_dip_fitted,r2,t_R,sigma,D,R_h,t,p
+
+#for deletion
+'''
 results=[]
 
 def main():
@@ -230,4 +232,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main()'''
