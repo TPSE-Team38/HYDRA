@@ -825,6 +825,15 @@ class MainWindow(QMainWindow):
         except Exception as e:
             QMessageBox.critical(self, "Export failed", str(e))
 
+    def reset_for_accessibility(self):
+        if hasattr(self,"analysis_results") and self.analysis_results != []:
+            self.run()
+            self.reset_btn.setEnabled(False)
+            self.abort_remasking_btn.setEnabled(False)
+            self.continue_remasking_btn.setEnabled(False)
+        if hasattr(self,"tau_out") and self.tau_out.text() !="":
+            self.calculate_tau_peclet()
+
 
 class Accessibility_Window(QWidget):
     def __init__(self,parent,mode):
@@ -843,3 +852,4 @@ class Accessibility_Window(QWidget):
 
     def on_change(self):
         accessibility_colors.change_accessibility_color(self.drop_down.currentText())
+        self.parent().reset_for_accessibility()
