@@ -827,11 +827,7 @@ class MainWindow(QMainWindow):
 
     def reset_for_accessibility(self):
         if hasattr(self,"analysis_results") and self.analysis_results != []:
-            temp=self.analysis_results.copy()
-            self.run()
-            self.analysis_results=temp
             self.show_current_result()
-            self.reset_btn.setEnabled(False)
             self.abort_remasking_btn.setEnabled(False)
             self.continue_remasking_btn.setEnabled(False)
         if hasattr(self,"tau_out") and self.tau_out.text() !="":
