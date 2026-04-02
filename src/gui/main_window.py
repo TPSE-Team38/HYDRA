@@ -407,8 +407,9 @@ class MainWindow(QMainWindow):
         z_vals = get_z_vals(result.charge_state, result.charge_range)
         z_text = ", ".join(str(int(z)) for z in z_vals)
 
-        tau_definition = f"Tau is the time it takes for the protein to reach 95% of its maximum fluorescence intensity"
-        peclet_definition = f"Péclet number is the ratio of the protein's diffusion coefficient to the flow rate"
+        tau_definition = "τ = (𝑘𝐵. 𝑇⋅𝐿) / (6⋅𝜂⋅𝑄⋅𝑅ℎ)"
+
+        peclet_definition = "Pe = (6⋅𝜂⋅𝑄⋅𝑅ℎ) / (𝑘𝐵 ⋅ 𝑇 ⋅ a)"
         plain_text_style = "text-decoration: none; color: inherit;"
 
         self.update_info(
@@ -569,8 +570,10 @@ class MainWindow(QMainWindow):
         z_vals = get_z_vals(result.charge_state, result.charge_range)
         z_text = ", ".join(str(int(z)) for z in z_vals)
 
-        tau_definition = f"Tau is the time it takes for the protein to reach 95% of its maximum fluorescence intensity"
-        peclet_definition = f"Péclet number is the ratio of the protein's diffusion coefficient to the flow rate"
+        tau_definition = "τ = (𝑘𝐵. 𝑇⋅𝐿) / (6⋅𝜂⋅𝑄⋅𝑅ℎ)"
+
+        peclet_definition = "Pe = (6⋅𝜂⋅𝑄⋅𝑅ℎ) / (𝑘𝐵 ⋅ 𝑇 ⋅ a)"
+
         plain_text_style = "text-decoration: none; color: inherit;"
         self.update_info(
 
