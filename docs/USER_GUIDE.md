@@ -5,7 +5,7 @@
 This guide is written for lab users who do not code. It explains how to run HYDRA, what each input means, and how to read the results.
 
 ## What You Need
-- A Windows PC with HYDRA installed.
+- A Windows PC with HYDRA installed.(You can install our latest `.exe` file from our **[Releases page](https://github.com/TPSE-Team38/HYDRA/releases/latest)**.
 - An `.ms1` file exported from your mass spectrometer.
 
 ## Quick Start (2–3 Minutes)
