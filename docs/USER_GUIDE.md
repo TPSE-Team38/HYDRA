@@ -19,6 +19,14 @@ This guide is written for lab users who do not code. It explains how to run HYDR
 8. Click **Export Results as PDF**.
 
 ## Main Screen Overview
+
+## Features
+1. Load MS1 files and parse spectra
+2. Extract EICs for one or many proteins across charge ranges
+3. Automatic peak masking and Gaussian fit
+4. Quality metrics (R2, tau, Peclet) with visual indicators
+5. Calculate tau and peclet given an estimated Rh
+
 ![Main screen](../assets/features-screenshot.png)
 
 ## Step-by-Step Workflow
@@ -65,6 +73,11 @@ You will see:
 - a results panel with numeric values and color indicators.
 
 ![Result plot](../assets/mass-spectrometry.png)
+
+## 6.2) Do you get a bad Tau value? Ajust the flow rate Q!! ("Just hover the mouse over the Tau value field." )
+
+<img src="../assets/flow-rate-proposition.png" alt="flow rate proposition" width="400">
+
 
 ### 7) Remask if needed
 If the fit looks wrong, you can remask points:
