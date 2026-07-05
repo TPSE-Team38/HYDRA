@@ -20,6 +20,7 @@ from PySide6.QtGui import QCursor,QBitmap
 
 from ..parallization import LoadMS1Worker
 
+import pandas as pd
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -190,9 +191,13 @@ class MainWindow(QMainWindow):
 
         open_fullscreen_btn = QPushButton("View Plot in Full Screen")
         open_fullscreen_btn.clicked.connect(self.open_plot_fullscreen)
+        save_plot_btn = QPushButton("Save Plot as .csv")
+        save_plot_btn.clicked.connect(self.save_plot)
 
         header_layout.addStretch()
         header_layout.addWidget(open_fullscreen_btn)
+        # header_layout.addStretch()
+        header_layout.addWidget(save_plot_btn)
 
         self.plot_layout.addLayout(header_layout)
         self.plot_layout.addWidget(self.plot_toolbar)
@@ -291,6 +296,31 @@ class MainWindow(QMainWindow):
 
         self.show_current_result()
 
+    def save_plot(self):
+        if self.plot.stored_show_eic_args is None:
+            QMessageBox.warning(self, "No plot", "No plot available yet.")
+            return
+
+        if (self.plot.curr_res is not None and self.plot.curr_res.currently_remasking):
+            QMessageBox.warning(
+                self,
+                "Remasking in progress",
+                "Please confirm or abort remasking before opening fullscreen view."
+            )
+            return
+
+        curr_result=self.plot.stored_show_eic_args[0]
+        result_dict={"seconds":curr_result.seconds, "final_intensities":curr_result.final_intensities, "removed_dip":curr_result.removed_dip, "removed_dip_fitted":curr_result.removed_dip_fitted}
+        result_params={"protein_name":[curr_result.protein_name], "protein_mz":[curr_result.protein_mz], "mz_window":[curr_result.mz_window],"temperature":float(self.temp_input.text()),
+            "viscosity":float(self.viscosity_input.text()),
+            "capillary_radius":float(self.radius_input.text()),
+            "capillary_length":float(self.length_input.text()),
+            "flow_rate":float(self.flow_input.text()),"t_R":[curr_result.tR],"sigma":[curr_result.sigma],"R^2":[curr_result.r2], "R_h":[curr_result.Rh],"D":[curr_result.D],"Tau":[curr_result.t],"Péclet":[curr_result.p]}
+        df=pd.DataFrame.from_dict(result_dict)
+        params_df=pd.DataFrame.from_dict(result_params)
+        df=pd.concat([params_df,df],ignore_index=True)
+        save_path=QFileDialog.getSaveFileName(dir=f"Result_Of_Analysis_{curr_result.protein_name}_{curr_result.protein_mz}_{curr_result.mz_window}.csv",filter="*.csv")[0]
+        df.to_csv(save_path)
 
 
     def open_plot_fullscreen(self):
@@ -309,7 +339,6 @@ class MainWindow(QMainWindow):
                 "Please confirm or abort remasking before opening fullscreen view."
             )
             return
-
 
         # Detach from main window
         self.plot.setParent(None)
