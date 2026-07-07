@@ -1,7 +1,7 @@
 import numpy as np
 from .Calculations import get_z_vals, mz_to_mz
 
-def extract_eic(spectra, protein_mz, mz_window, charge_state, charge_range):
+def extract_eic(spectra, protein_mz, mz_window, charge_state, charge_range,measurement_start,measurement_end):
     z_vals = get_z_vals(charge_state, charge_range)
 
     all_eics = []
@@ -20,6 +20,5 @@ def extract_eic(spectra, protein_mz, mz_window, charge_state, charge_range):
         all_eics.append(intensities)
 
     summed = np.sum(all_eics, axis=0)
-    x = np.arange(1, len(summed) + 1)
-
-    return x, summed
+    x = np.arange(measurement_start, len(summed) + 1 if len(summed) < measurement_end else measurement_end)
+    return x, summed[[n in [p-1 for p in x] for n in range(len(summed))]]

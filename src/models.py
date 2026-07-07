@@ -1,3 +1,4 @@
+from cmath import inf
 from dataclasses import dataclass
 import numpy as np
 
@@ -16,6 +17,9 @@ class AnalysisConfig:
     capillary_radius: float
     capillary_length: float
     flow_rate: float
+    measurement_start:float
+    measurement_end:float
+
 
 
 @dataclass
@@ -53,3 +57,6 @@ class EICResult:
     original_Rh: float
     original_t: float
     original_p: float
+
+    measurement_start:float
+    measurement_end:float

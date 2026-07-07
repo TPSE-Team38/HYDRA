@@ -33,7 +33,7 @@ class PlotWidget(FigureCanvasQTAgg):
         """
         self.ax.clear()
 
-        self.ax.set_xlim(1, result.seconds[-1])
+        self.ax.set_xlim(result.seconds[0], result.seconds[-1])
         self.ax.set_ylim(min(result.final_intensities), max(result.final_intensities))
         self.ax.scatter(result.seconds, result.final_intensities, lw=1.5)
 

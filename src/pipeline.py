@@ -12,7 +12,9 @@ def run_analysis(spectra,config):
         config.protein_mz,
         config.mz_window,
         config.charge_state,
-        config.charge_range
+        config.charge_range,
+        config.measurement_start,
+        config.measurement_end
     )
 
     removed_dip, xc_guess = get_peaks(final_intensities)
@@ -54,5 +56,7 @@ def run_analysis(spectra,config):
         D,
         Rh,
         t,
-        p
+        p,
+        config.measurement_start,
+        config.measurement_end
         )

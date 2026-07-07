@@ -1,4 +1,5 @@
 import os
+from cmath import inf
 from datetime import datetime
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QLabel, QPushButton, QFileDialog,
@@ -8,6 +9,8 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QThreadPool
 from PySide6.QtGui import QIcon
 from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as NavigationToolbar
+
+from src.models import EICResult
 from .PlotFullscreenWindow import PlotFullscreenWindow
 from .plot_widget import PlotWidget
 from .controller import AnalysisController
@@ -189,12 +192,23 @@ class MainWindow(QMainWindow):
         header_layout = QHBoxLayout()
         header_layout.addWidget(QLabel("Results Plot"))
 
+        self.measurement_start=QLineEdit()
+        self.measurement_start.setEnabled(False)
+        self.measurement_end=QLineEdit()
+        self.measurement_end.setEnabled(False)
+        self.measurement_button=QPushButton("Run with new bounds")
+        self.measurement_button.clicked.connect(self.on_measurement_range_change)
+        self.measurement_button.setEnabled(False)
+
         open_fullscreen_btn = QPushButton("View Plot in Full Screen")
         open_fullscreen_btn.clicked.connect(self.open_plot_fullscreen)
         save_plot_btn = QPushButton("Save Plot as .csv")
         save_plot_btn.clicked.connect(self.save_plot)
 
         header_layout.addStretch()
+        header_layout.addWidget(self.measurement_button)
+        header_layout.addWidget(self.measurement_start)
+        header_layout.addWidget(self.measurement_end)
         header_layout.addWidget(open_fullscreen_btn)
         # header_layout.addStretch()
         header_layout.addWidget(save_plot_btn)
@@ -268,6 +282,50 @@ class MainWindow(QMainWindow):
             QToolTip.hideText()
 
     # ================= ACTIONS =================
+    def on_measurement_range_change(self):
+        self.measurement_button.setEnabled(False)
+        self.measurement_start.setEnabled(False)
+        self.measurement_end.setEnabled(False)
+        result:EICResult=self.analysis_results[self.current_result_index]
+        try:
+            config = AnalysisConfig(
+                ms1_path=self.ms1_path,
+                protein_name=result.protein_name,
+                protein_mz=float(result.protein_mz),
+                mz_window=float(result.mz_window),
+                charge_state=int(result.charge_state),
+                charge_range=int(result.charge_state),
+                temperature=float(self.temp_input.text()),
+                viscosity=float(self.viscosity_input.text()),
+                capillary_radius=float(self.radius_input.text()),
+                capillary_length=float(self.length_input.text()),
+                flow_rate=float(self.flow_input.text()),
+                measurement_start=1 if self.measurement_start.text()=='' else float(self.measurement_start.text()),
+                measurement_end=inf if self.measurement_end.text()=='' else float(self.measurement_end.text())
+            )
+            recreated_result = self.controller.run(config, self.reset_btn, self.abort_remasking_btn, self.continue_remasking_btn,
+                                         self.show_current_result, store=False)
+            if result is None:
+                QMessageBox.critical(self, "Analysis failed", "Analysis returned no result.")
+                self.analyse_btn.setEnabled(False)
+                return
+            self.analysis_results[self.current_result_index]=recreated_result
+
+            self.analyse_btn.setText("Analyse Data")
+            self.analyse_btn.setEnabled(True)
+            self.export_btn.setEnabled(True)
+            self.current_result_index = 0
+            self.show_current_result()
+            self.measurement_start.setEnabled(True)
+            self.measurement_end.setEnabled(True)
+            self.measurement_button.setEnabled(True)
+
+
+        except ValueError as e:
+            QMessageBox.critical(self, "Invalid input", f"Check protein or parameter values.")
+            self.analyse_btn.setEnabled(False)
+            print(e)
+
     def open_accessibility_settings(self,checked):
         self.accessibility_win=Accessibility_Window(self,accessibility_colors.current_mode)
         self.accessibility_win.show()
@@ -537,11 +595,14 @@ class MainWindow(QMainWindow):
                     capillary_radius=float(self.radius_input.text()),
                     capillary_length=float(self.length_input.text()),
                     flow_rate=float(self.flow_input.text()),
+                    measurement_end=inf,
+                    measurement_start=1
                 )
 
                 result = self.controller.run(config,self.reset_btn,self.abort_remasking_btn,self.continue_remasking_btn,self.show_current_result, store=False)
                 if result is None:
                     QMessageBox.critical(self, "Analysis failed", "Analysis returned no result.")
+                    self.analyse_btn.setEnabled(False)
                     return
                 self.analysis_results.append(result)
             self.analyse_btn.setText("Analyse Data")
@@ -549,15 +610,21 @@ class MainWindow(QMainWindow):
             self.export_btn.setEnabled(True)
             self.current_result_index = 0
             self.show_current_result()
+            self.measurement_start.setEnabled(True)
+            self.measurement_end.setEnabled(True)
+            self.measurement_button.setEnabled(True)
 
-        except ValueError:
-            QMessageBox.critical(self, "Invalid input", "Check protein or parameter values.")
+        except ValueError as e:
+            QMessageBox.critical(self, "Invalid input", f"Check protein or parameter values.")
+            self.analyse_btn.setEnabled(False)
+            print(e)
 
     def show_current_result(self):
         if not self.analysis_results:
             return
 
-        result = self.analysis_results[self.current_result_index]
+        self.measurement_button.setEnabled(False)
+        result :EICResult= self.analysis_results[self.current_result_index]
 
 
         self.plot.show_eic(result, self.reset_btn,self.show_current_result,self.abort_remasking_btn,self.continue_remasking_btn,self.show_recalculated_fit,config=AnalysisConfig(
@@ -571,7 +638,9 @@ class MainWindow(QMainWindow):
             viscosity=float(self.viscosity_input.text()),
             capillary_radius=float(self.radius_input.text()),
             capillary_length=float(self.length_input.text()),
-            flow_rate=float(self.flow_input.text())
+            flow_rate=float(self.flow_input.text()),
+            measurement_start=result.measurement_start,
+            measurement_end=result.measurement_end
         ))
 
         r2_value = f"{result.r2}"
@@ -618,6 +687,9 @@ class MainWindow(QMainWindow):
             f"<a href='{tau_definition}' style='{plain_text_style}'>Tau</a>: {tau_colored}<br>"
             f"<a href='{peclet_definition}' style='{plain_text_style}'>Péclet</a>: {peclet_colored}<br>"
         )
+        self.measurement_start.setText(str(result.measurement_start))
+        self.measurement_end.setText(str(result.measurement_end))
+        self.measurement_button.setEnabled(True)
         self.prev_btn.setEnabled(self.current_result_index > 0)
         self.next_btn.setEnabled(self.current_result_index < len(self.analysis_results) - 1)
 

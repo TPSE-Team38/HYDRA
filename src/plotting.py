@@ -55,8 +55,10 @@ class ResultPlot:
             except NotImplementedError:
                 pass
             # self.fig.canvas.draw()
-        c, v = int(event.xdata), self.y[int(event.xdata)]
-        self.peaks.append((c, v))
+        c, v = int(event.xdata), self.y[int(event.xdata)-int(self.ax.get_xlim()[0])]
+        # c, v = int(event.xdata), self.y[int(event.xdata)]
+        # print(int(event.xdata))
+        self.peaks.append((c-int(self.ax.get_xlim()[0]), v))
         self.new_points_plot.append(self.ax.plot(c, v, 'x',color="green")[0])
         self.fig.canvas.draw()
         if len(self.peaks) == 2:

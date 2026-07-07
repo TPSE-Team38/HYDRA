@@ -237,15 +237,32 @@ def gaussian_fit(y:np.ndarray[float],x:np.ndarray[float],xc):
     fits the curve of the tails created by ion suppression removal
     """
     mask=~np.isnan(y)
+    #new
+    nan_indices = np.where(np.isnan(y))[0]
+    x_gap_start = x[nan_indices[0]]
+    x_gap_end = x[nan_indices[-1]]
+    x0_guess = (x_gap_start + x_gap_end) / 2
+
     x_fit=x[mask]
     y_fit=y[mask]
+    #new
+    c_guess = np.mean(np.concatenate([y_fit[:5], y_fit[-5:]]))
+
     mu=np.mean(y_fit)
     sum_squared_deviation=sum([(p-mu)**2 for p in y_fit])
     variance=sum_squared_deviation/len(y_fit)-1
     sigma=np.sqrt(variance)
-    # p0=[max(y)-np.median(y_fit,axis=0),xc,sigma,np.median(y_fit,axis=0)]
+    #new
+    shoulder_height = max(y[nan_indices[0] - 1], y[nan_indices[-1] + 1])
+    a_guess = (shoulder_height - c_guess) * 1.5
+    sigma_guess = (x_gap_end - x_gap_start) / 2
+    # p0=[2*max(y)-np.median(y_fit,axis=0),xc,sigma,np.min(y_fit,axis=0)]
+    p0 = [a_guess, x0_guess, sigma_guess, c_guess]
+    lower_bounds = [a_guess * 0.5,x_gap_start,sigma_guess * 0.2, c_guess - 10 ]
+    upper_bounds = [a_guess * 5,x_gap_end,sigma_guess * 5,c_guess + 10 ]
     try:
-        params,_=curve_fit(gaus,x_fit,y_fit,maxfev=10000,method='lm')
+        params,_=curve_fit(gaus,x_fit,y_fit,p0=p0,bounds=(lower_bounds, upper_bounds))
+        # , method = 'lm'
     except:
         params=[0,0,0,0]
     return gaus(x,*params),params[2]
