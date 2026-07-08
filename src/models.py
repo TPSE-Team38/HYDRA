@@ -20,6 +20,8 @@ class AnalysisConfig:
     measurement_start:float
     measurement_end:float
 
+    disable_masking: bool
+
 
 
 @dataclass
@@ -60,3 +62,5 @@ class EICResult:
 
     measurement_start:float
     measurement_end:float
+
+    disable_masking:bool

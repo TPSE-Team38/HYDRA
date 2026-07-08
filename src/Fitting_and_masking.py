@@ -247,7 +247,6 @@ def gaussian_fit(y:np.ndarray[float],x:np.ndarray[float],xc):
     y_fit=y[mask]
     #new
     c_guess = np.mean(np.concatenate([y_fit[:5], y_fit[-5:]]))
-
     mu=np.mean(y_fit)
     sum_squared_deviation=sum([(p-mu)**2 for p in y_fit])
     variance=sum_squared_deviation/len(y_fit)-1
@@ -267,3 +266,15 @@ def gaussian_fit(y:np.ndarray[float],x:np.ndarray[float],xc):
         params=[0,0,0,0]
     return gaus(x,*params),params[2]
 
+def gaussian_fit_no_mask(y:np.ndarray[float],x:np.ndarray[float],xc):
+    mu = np.mean(y)
+    sum_squared_deviation = sum([(p - mu) ** 2 for p in y])
+    variance = sum_squared_deviation / len(y) - 1
+    sigma = np.sqrt(variance)
+    p0=[y[xc],xc,sigma,np.min(y,axis=0)]
+
+    try:
+        params,_=curve_fit(gaus,x,y)
+    except:
+        params=[0,0,0,0]
+    return gaus(x,*params),params[2]

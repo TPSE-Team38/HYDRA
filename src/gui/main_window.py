@@ -196,8 +196,11 @@ class MainWindow(QMainWindow):
         self.measurement_start.setEnabled(False)
         self.measurement_end=QLineEdit()
         self.measurement_end.setEnabled(False)
-        self.measurement_button=QPushButton("Run with new bounds")
+        self.measurement_button=QPushButton("Run with new Bounds")
         self.measurement_button.clicked.connect(self.on_measurement_range_change)
+        self.disable_masking_btn = QPushButton("Disable Masking")
+        self.disable_masking_btn.clicked.connect(self.disable_masking)
+        self.disable_masking_btn.setEnabled(False)
         self.measurement_button.setEnabled(False)
 
         open_fullscreen_btn = QPushButton("View Plot in Full Screen")
@@ -206,6 +209,7 @@ class MainWindow(QMainWindow):
         save_plot_btn.clicked.connect(self.save_plot)
 
         header_layout.addStretch()
+        header_layout.addWidget(self.disable_masking_btn)
         header_layout.addWidget(self.measurement_button)
         header_layout.addWidget(self.measurement_start)
         header_layout.addWidget(self.measurement_end)
@@ -282,6 +286,44 @@ class MainWindow(QMainWindow):
             QToolTip.hideText()
 
     # ================= ACTIONS =================
+    def disable_masking(self):
+        self.disable_masking_btn.setEnabled(False)
+        result: EICResult = self.analysis_results[self.current_result_index]
+        try:
+            config = AnalysisConfig(
+                ms1_path=self.ms1_path,
+                protein_name=result.protein_name,
+                protein_mz=float(result.protein_mz),
+                mz_window=float(result.mz_window),
+                charge_state=int(result.charge_state),
+                charge_range=int(result.charge_state),
+                temperature=float(self.temp_input.text()),
+                viscosity=float(self.viscosity_input.text()),
+                capillary_radius=float(self.radius_input.text()),
+                capillary_length=float(self.length_input.text()),
+                flow_rate=float(self.flow_input.text()),
+                measurement_start=1 if self.measurement_start.text()=='' else float(self.measurement_start.text()),
+                measurement_end=inf if self.measurement_end.text()=='' else float(self.measurement_end.text()),
+                disable_masking=not result.disable_masking
+            )
+            recreated_result = self.controller.run(config, self.reset_btn, self.abort_remasking_btn,
+                                                   self.continue_remasking_btn,
+                                                   self.show_current_result, store=False)
+            if result is None:
+                QMessageBox.critical(self, "Analysis failed", "Analysis returned no result.")
+                self.analyse_btn.setEnabled(False)
+                return
+            self.analysis_results[self.current_result_index] = recreated_result
+
+        except ValueError as e:
+            recreated_result= result
+            QMessageBox.critical(self, "Invalid input", f"Check protein or parameter values.")
+            self.analyse_btn.setEnabled(False)
+
+        self.show_current_result()
+        self.disable_masking_btn.setText("Disable Masking" if not recreated_result.disable_masking else "Enable Masking")
+        self.disable_masking_btn.setEnabled(True)
+
     def on_measurement_range_change(self):
         self.measurement_button.setEnabled(False)
         self.measurement_start.setEnabled(False)
@@ -301,7 +343,8 @@ class MainWindow(QMainWindow):
                 capillary_length=float(self.length_input.text()),
                 flow_rate=float(self.flow_input.text()),
                 measurement_start=1 if self.measurement_start.text()=='' else float(self.measurement_start.text()),
-                measurement_end=inf if self.measurement_end.text()=='' else float(self.measurement_end.text())
+                measurement_end=inf if self.measurement_end.text()=='' else float(self.measurement_end.text()),
+                disable_masking=False
             )
             recreated_result = self.controller.run(config, self.reset_btn, self.abort_remasking_btn, self.continue_remasking_btn,
                                          self.show_current_result, store=False)
@@ -314,7 +357,7 @@ class MainWindow(QMainWindow):
             self.analyse_btn.setText("Analyse Data")
             self.analyse_btn.setEnabled(True)
             self.export_btn.setEnabled(True)
-            self.current_result_index = 0
+            # self.current_result_index = 0
             self.show_current_result()
             self.measurement_start.setEnabled(True)
             self.measurement_end.setEnabled(True)
@@ -596,7 +639,8 @@ class MainWindow(QMainWindow):
                     capillary_length=float(self.length_input.text()),
                     flow_rate=float(self.flow_input.text()),
                     measurement_end=inf,
-                    measurement_start=1
+                    measurement_start=1,
+                    disable_masking=False
                 )
 
                 result = self.controller.run(config,self.reset_btn,self.abort_remasking_btn,self.continue_remasking_btn,self.show_current_result, store=False)
@@ -613,6 +657,7 @@ class MainWindow(QMainWindow):
             self.measurement_start.setEnabled(True)
             self.measurement_end.setEnabled(True)
             self.measurement_button.setEnabled(True)
+            self.disable_masking_btn.setEnabled(True)
 
         except ValueError as e:
             QMessageBox.critical(self, "Invalid input", f"Check protein or parameter values.")
@@ -640,7 +685,8 @@ class MainWindow(QMainWindow):
             capillary_length=float(self.length_input.text()),
             flow_rate=float(self.flow_input.text()),
             measurement_start=result.measurement_start,
-            measurement_end=result.measurement_end
+            measurement_end=result.measurement_end,
+            disable_masking=result.disable_masking
         ))
 
         r2_value = f"{result.r2}"
