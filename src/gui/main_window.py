@@ -189,8 +189,8 @@ class MainWindow(QMainWindow):
 
         self.plot_toolbar = NavigationToolbar(self.plot, self)
 
-        header_layout = QHBoxLayout()
-        header_layout.addWidget(QLabel("Results Plot"))
+        self.header_layout = QHBoxLayout()
+        self.header_layout.addWidget(QLabel("Results Plot"))
 
         self.measurement_start=QLineEdit()
         self.measurement_start.setEnabled(False)
@@ -203,21 +203,20 @@ class MainWindow(QMainWindow):
         self.disable_masking_btn.setEnabled(False)
         self.measurement_button.setEnabled(False)
 
-        open_fullscreen_btn = QPushButton("View Plot in Full Screen")
-        open_fullscreen_btn.clicked.connect(self.open_plot_fullscreen)
-        save_plot_btn = QPushButton("Save Plot as .csv")
-        save_plot_btn.clicked.connect(self.save_plot)
+        self.open_fullscreen_btn = QPushButton("View Plot in Full Screen")
+        self.open_fullscreen_btn.clicked.connect(self.open_plot_fullscreen)
+        self.save_plot_btn = QPushButton("Save Plot as .csv")
+        self.save_plot_btn.clicked.connect(self.save_plot)
 
-        header_layout.addStretch()
-        header_layout.addWidget(self.disable_masking_btn)
-        header_layout.addWidget(self.measurement_button)
-        header_layout.addWidget(self.measurement_start)
-        header_layout.addWidget(self.measurement_end)
-        header_layout.addWidget(open_fullscreen_btn)
-        # header_layout.addStretch()
-        header_layout.addWidget(save_plot_btn)
+        self.header_layout.addStretch()
+        self.header_layout.addWidget(self.open_fullscreen_btn)
+        self.header_layout.addWidget(self.save_plot_btn)
+        self.header_layout.addWidget(self.measurement_end)
+        self.header_layout.addWidget(self.measurement_start)
+        self.header_layout.addWidget(self.measurement_button)
+        self.header_layout.addWidget(self.disable_masking_btn)
 
-        self.plot_layout.addLayout(header_layout)
+        self.plot_layout.addLayout(self.header_layout)
         self.plot_layout.addWidget(self.plot_toolbar)
         self.plot_layout.addWidget(self.plot)
 
@@ -325,6 +324,11 @@ class MainWindow(QMainWindow):
         self.disable_masking_btn.setEnabled(True)
 
     def on_measurement_range_change(self):
+        if not self.measurement_start.text() == '' and not self.measurement_end.text() == '':
+            if float(self.measurement_start.text()) >= float(self.measurement_end.text()) or float(self.measurement_start.text()) <1:
+                QMessageBox.critical(self, "Invalid range", "Invalid measurement range.")
+                return
+
         self.measurement_button.setEnabled(False)
         self.measurement_start.setEnabled(False)
         self.measurement_end.setEnabled(False)
@@ -344,7 +348,7 @@ class MainWindow(QMainWindow):
                 flow_rate=float(self.flow_input.text()),
                 measurement_start=1 if self.measurement_start.text()=='' else float(self.measurement_start.text()),
                 measurement_end=inf if self.measurement_end.text()=='' else float(self.measurement_end.text()),
-                disable_masking=False
+                disable_masking=result.disable_masking
             )
             recreated_result = self.controller.run(config, self.reset_btn, self.abort_remasking_btn, self.continue_remasking_btn,
                                          self.show_current_result, store=False)
@@ -384,6 +388,12 @@ class MainWindow(QMainWindow):
         self.abort_remasking_btn.setParent(None)
         self.continue_remasking_btn.setParent(None)
 
+        self.save_plot_btn.setParent(None)
+        self.measurement_end.setParent(None)
+        self.measurement_start.setParent(None)
+        self.measurement_button.setParent(None)
+        self.disable_masking_btn.setParent(None)
+
         # Restore plot
         self.plot_layout.addWidget(self.plot_toolbar)
         self.plot_layout.addWidget(self.plot)
@@ -394,6 +404,12 @@ class MainWindow(QMainWindow):
         self.navigation_layout.addWidget(self.reset_btn)
         self.navigation_layout.addWidget(self.continue_remasking_btn)
         self.navigation_layout.addWidget(self.next_btn)
+
+        self.header_layout.addWidget(self.save_plot_btn)
+        self.header_layout.addWidget(self.measurement_end)
+        self.header_layout.addWidget(self.measurement_start)
+        self.header_layout.addWidget(self.measurement_button)
+        self.header_layout.addWidget(self.disable_masking_btn)
 
         self.show_current_result()
 
@@ -451,6 +467,12 @@ class MainWindow(QMainWindow):
         self.abort_remasking_btn.setParent(None)
         self.continue_remasking_btn.setParent(None)
 
+        self.save_plot_btn.setParent(None)
+        self.measurement_end.setParent(None)
+        self.measurement_start.setParent(None)
+        self.measurement_button.setParent(None)
+        self.disable_masking_btn.setParent(None)
+
         self.plot_window = PlotFullscreenWindow(
             parent=self,
             plot=self.plot,
@@ -469,6 +491,15 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.plot_toolbar)
         layout.addWidget(self.plot)
 
+        # ---- main window Functions ----
+        function_layout = QHBoxLayout()
+        function_layout.addWidget(self.save_plot_btn)
+        function_layout.addWidget(self.measurement_end)
+        function_layout.addWidget(self.measurement_start)
+        function_layout.addWidget(self.measurement_button)
+        function_layout.addWidget(self.disable_masking_btn)
+        layout.addLayout(function_layout)
+
         # ---- reuse main window buttons ----
         nav_layout = QHBoxLayout()
         nav_layout.addWidget(self.prev_btn)
@@ -477,6 +508,8 @@ class MainWindow(QMainWindow):
         nav_layout.addWidget(self.continue_remasking_btn)
         nav_layout.addWidget(self.next_btn)
         layout.addLayout(nav_layout)
+
+
 
         self.plot_window.setCentralWidget(central)
         self.show_current_result()
@@ -657,6 +690,7 @@ class MainWindow(QMainWindow):
             self.measurement_start.setEnabled(True)
             self.measurement_end.setEnabled(True)
             self.measurement_button.setEnabled(True)
+            self.disable_masking_btn.setText("Disable Masking")
             self.disable_masking_btn.setEnabled(True)
 
         except ValueError as e:
