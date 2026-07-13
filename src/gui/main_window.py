@@ -211,8 +211,8 @@ class MainWindow(QMainWindow):
         self.header_layout.addStretch()
         self.header_layout.addWidget(self.open_fullscreen_btn)
         self.header_layout.addWidget(self.save_plot_btn)
-        self.header_layout.addWidget(self.measurement_end)
         self.header_layout.addWidget(self.measurement_start)
+        self.header_layout.addWidget(self.measurement_end)
         self.header_layout.addWidget(self.measurement_button)
         self.header_layout.addWidget(self.disable_masking_btn)
 
@@ -406,8 +406,8 @@ class MainWindow(QMainWindow):
         self.navigation_layout.addWidget(self.next_btn)
 
         self.header_layout.addWidget(self.save_plot_btn)
-        self.header_layout.addWidget(self.measurement_end)
         self.header_layout.addWidget(self.measurement_start)
+        self.header_layout.addWidget(self.measurement_end)
         self.header_layout.addWidget(self.measurement_button)
         self.header_layout.addWidget(self.disable_masking_btn)
 
@@ -468,8 +468,8 @@ class MainWindow(QMainWindow):
         self.continue_remasking_btn.setParent(None)
 
         self.save_plot_btn.setParent(None)
-        self.measurement_end.setParent(None)
         self.measurement_start.setParent(None)
+        self.measurement_end.setParent(None)
         self.measurement_button.setParent(None)
         self.disable_masking_btn.setParent(None)
 
@@ -494,8 +494,8 @@ class MainWindow(QMainWindow):
         # ---- main window Functions ----
         function_layout = QHBoxLayout()
         function_layout.addWidget(self.save_plot_btn)
-        function_layout.addWidget(self.measurement_end)
         function_layout.addWidget(self.measurement_start)
+        function_layout.addWidget(self.measurement_end)
         function_layout.addWidget(self.measurement_button)
         function_layout.addWidget(self.disable_masking_btn)
         layout.addLayout(function_layout)
