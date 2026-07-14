@@ -946,7 +946,7 @@ class MainWindow(QMainWindow):
                         result.final_intensities,
                         s=20,
                         alpha=0.8,
-                        color="red",
+                        color="#65bdf7",
                         label="Masked data points"
                     )
 
@@ -956,7 +956,7 @@ class MainWindow(QMainWindow):
                         result.removed_dip,
                         s=20,
                         alpha=0.9,
-                        color="orange",
+                        color="#f34242",
                         label="EIC after Masking"
                     )
 
@@ -966,7 +966,7 @@ class MainWindow(QMainWindow):
                         result.removed_dip_fitted,
                         "--",
                         linewidth=2,
-                        color="blue",
+                        color="black",
                         label=f"Fit (R²={result.r2:.3f}) \nR_h = {(result.Rh * 10**9):.3f} nm "
                     )
 
