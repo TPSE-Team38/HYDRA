@@ -36,7 +36,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("HYDRA")
         self.resize(1200, 800)
         self.reset_btn,self.abort_remasking_btn,self.continue_remasking_btn =None,None,None
-        self.icon=QIcon("./assets/HYDRA-logo.png")
+        self.icon=QIcon("./assets/HYDRA-logo_new.png")
         self.setWindowIcon(self.icon)
         self.ms1_path = None
         self.protein_rows = []
@@ -770,6 +770,7 @@ class MainWindow(QMainWindow):
         self.measurement_start.setText(str(result.measurement_start))
         self.measurement_end.setText(str(result.measurement_end))
         self.measurement_button.setEnabled(True)
+        self.disable_masking_btn.setText("Disable Masking" if not result.disable_masking else "Enable Masking")
         self.prev_btn.setEnabled(self.current_result_index > 0)
         self.next_btn.setEnabled(self.current_result_index < len(self.analysis_results) - 1)
 
